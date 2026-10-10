@@ -388,7 +388,7 @@ RUN if [ "$ENABLE_systemd257_ARG" = "true" ]; then \
 
 # 打包前删除仅用于构建的一次性脚本；TUI 和运行时脚本保留。
 RUN rm -f \
-        /usr/local/sbin/configure-chrome \
+       # /usr/local/sbin/configure-chrome \
         /usr/local/sbin/configure-desktop \
         /usr/local/sbin/install-desktop \
         /usr/local/sbin/install-anland-desktop \
