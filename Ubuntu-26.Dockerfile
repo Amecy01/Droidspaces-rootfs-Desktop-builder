@@ -51,7 +51,7 @@ COPY scripts/tui/install-winefonts.sh /usr/local/sbin/install-winefonts
 COPY scripts/tui/droidspaces-tui.sh /usr/local/bin/droidspaces-tui
 COPY scripts/install-desktop.sh /usr/local/sbin/install-desktop
 COPY scripts/configure-desktop.sh /usr/local/sbin/configure-desktop
-COPY scripts/configure-chrome.sh /usr/local/sbin/configure-chrome
+# COPY scripts/configure-chrome.sh /usr/local/sbin/configure-chrome
 COPY scripts/start-desktop-session.sh /usr/local/bin/start-desktop-session
 COPY scripts/desktops/ /usr/local/lib/droidspaces/desktops/
 
