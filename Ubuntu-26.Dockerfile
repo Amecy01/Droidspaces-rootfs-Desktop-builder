@@ -143,7 +143,7 @@ RUN sed -i '/en_US.UTF-8/s/^# //' /etc/locale.gen && \
     # Ubuntu 默认用户是 ubuntu，删除它避免冲突
     (deluser --remove-home ubuntu || true) && \
     # 创建自定义用户并直接加入 shadow 组，确保锁屏验证权限
-    useradd -m -s /bin/bash -G shadow ${USERNAME} && echo "${USERNAME}:1234" | chpasswd && \
+    useradd -m -s /bin/bash -G shadow ${USERNAME} && echo "${USERNAME}:0000" | chpasswd && \
     systemctl enable ssh
 
 # 为所有 Ubuntu RootFS 安装 Droidspaces USB Manager
@@ -224,6 +224,14 @@ RUN if [ "$ENABLE_mesa_ARG" = "true" ]; then \
 
 # 安装并配置原生 ARM64 Google Chrome。
 # RUN /usr/local/sbin/configure-chrome "$DESKTOP" "$DISPLAY_BACKEND"
+
+# 修复 Ubuntu 26.04 (polkit 127) 在 Android 6.1 及以下内核上验证弹窗闪退的问题
+# 原因：polkit 127 默认用 systemd socket 激活 helper，依赖 pidfd（内核 ≥6.5），旧内核不支持
+# 解决：屏蔽 socket，回退到传统的 setuid helper 模式
+RUN ln -sf /dev/null /etc/systemd/system/polkit-agent-helper.socket && \
+    dpkg-statoverride --update --add root root 4755 /usr/lib/polkit-1/polkit-agent-helper-1 || true
+
+
 # 修复容器内的 DHCP 网络服务配置
 RUN mkdir -p /etc/systemd/network && \
     cat <<'EOF' > /etc/systemd/network/10-eth-dhcp.network
