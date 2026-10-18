@@ -47,6 +47,10 @@ COPY scripts/systemd257.sh /usr/local/sbin/systemd257
 COPY scripts/tui/install-anland-kde.sh /usr/local/sbin/install-anland-kde
 COPY scripts/tui/install-anland-gnome.sh /usr/local/sbin/install-anland-gnome
 COPY scripts/tui/install-anland-next.sh /usr/local/sbin/install-anland-next
+COPY scripts/tui/install-anland-niri.sh /usr/local/sbin/install-anland-niri
+COPY scripts/tui/install-anland-hyprland.sh /usr/local/sbin/install-anland-hyprland
+COPY scripts/tui/install-anland-mango.sh /usr/local/sbin/install-anland-mango
+COPY scripts/tui/install-anland-denial.sh /usr/local/sbin/install-anland-denial
 COPY scripts/install-anland-desktop.sh /usr/local/sbin/install-anland-desktop
 COPY scripts/tui/install-mesa.sh /usr/local/sbin/install-mesa
 COPY scripts/tui/install-hangover-wine.sh /usr/local/sbin/install-hangover-wine
@@ -67,6 +71,11 @@ RUN if [ "$DISPLAY_BACKEND" = "anland-wayland" ]; then \
 RUN chmod +x /usr/local/bin/download-firmware /etc/profile.d/ds-aliases.sh /usr/local/sbin/install-anland-* /usr/local/sbin/install-mesa /usr/local/sbin/install-hangover-wine /usr/local/sbin/install-winefonts /usr/local/sbin/install-desktop /usr/local/sbin/configure-desktop /usr/local/sbin/configure-chrome /usr/local/bin/droidspaces-tui /usr/local/bin/start-desktop-session /usr/local/lib/droidspaces/desktops/*.sh && \
     ln -s droidspaces-tui /usr/local/bin/dstui && \
     ln -s droidspaces-tui /usr/local/bin/ds-tui
+
+# Debian 基础镜像默认通过 dpkg path-exclude 跳过 .mo 翻译文件；全局放开，
+# 保证所有桌面 profile 安装的软件带完整语言翻译。
+RUN sed -i 's|^path-exclude=/usr/share/locale/\*/LC_MESSAGES/\*.mo|#&|' \
+        /etc/dpkg/dpkg.cfg.d/excludes 2>/dev/null || true
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \

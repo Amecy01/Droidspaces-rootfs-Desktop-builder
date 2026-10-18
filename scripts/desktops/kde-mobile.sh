@@ -36,9 +36,6 @@ configure_environment() {
 }
 
 install_apt() {
-    sed -i 's|^path-exclude=/usr/share/locale/\*/LC_MESSAGES/\*.mo|#&|' \
-        /etc/dpkg/dpkg.cfg.d/excludes 2>/dev/null || true
-
     case "$ID:$VERSION_ID" in
         debian:13)
             apt-get install -y --no-install-recommends \
@@ -80,7 +77,6 @@ install_fedora() {
         *) echo "KDE mobile 不支持 Fedora $VERSION_ID" >&2; return 1 ;;
     esac
 
-    echo '%_install_langs all' > /etc/rpm/macros.image-language-conf
     dnf install -y --setopt=install_weak_deps=False \
         dbus-x11 xrandr xset xrdb xhost google-noto-cjk-fonts google-noto-emoji-color-fonts xorg-x11-server-Xorg wayland-utils \
         plasma-nano plasma-mobile maliit-keyboard maliit-framework \
@@ -98,7 +94,7 @@ install_arch() {
     pacman -S --noconfirm --needed \
         xorg-xrandr noto-fonts-cjk noto-fonts-emoji plasma-desktop plasma-workspace \
         plasma-mobile plasma-settings plasma-camera plasma-keyboard plasma-nano \
-        kwin kwin-x11 qt6-wayland qt6-svg qt6-virtualkeyboard wayland-utils xorg-server \
+        kwin qt6-wayland qt6-svg qt6-virtualkeyboard wayland-utils xorg-server \
         pipewire pipewire-alsa pipewire-pulse wireplumber powerdevil plasma-pa upower \
         kscreen ark konsole qmlkonsole dolphin kate kinfocenter mesa-utils libpulse vulkan-tools \
         aha clinfo dmidecode kfind plasma-systemmonitor filelight glmark2 vkmark \

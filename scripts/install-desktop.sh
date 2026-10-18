@@ -40,4 +40,4 @@ if [[ ! -x "$profile" ]]; then
 fi
 
 echo "--> 正在安装桌面配置：$desktop"
-exec "$profile"
+DROIDSPACES_DESKTOP="$desktop" exec "$profile" install

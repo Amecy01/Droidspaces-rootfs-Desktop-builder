@@ -2,11 +2,13 @@
 
 # Droidspaces RootFS 自动构建
 
-通过 GitHub Actions 为 Android 上的 Droidspaces 构建 Debian、Ubuntu、Fedora 或 Arch Linux ARM64 RootFS。可选择 KDE、KDE Mobile、GNOME、Anland Next、Arch Niri 或纯命令行环境，再下载 `.tar.xz` 导入 Droidspaces。
+通过 GitHub Actions 为 Android 上的 Droidspaces 构建 Debian、Ubuntu、Fedora 或 Arch Linux ARM64 RootFS。可选择 KDE、KDE Mobile、GNOME、Anland Next、Niri、Hyprland、Mango、Denial 或纯命令行环境，再下载 `.tar.xz` 导入 Droidspaces。
 
 ![Debian 13 KDE 桌面运行于 Anland Wayland](docs/images/debian-kde-wayland.jpg)
 
 **快速开始：** Fork 仓库 → 打开 `Actions` → 运行“编译并发布 Droidspaces RootFS” → 从 `Releases` 下载 RootFS。
+
+固定全桌面订阅源：在 Droidspaces 的 RootFS 仓库管理中添加 [中文 RootFS（GitHub）](https://github.com/Goldzxcbug/Droidspaces-rootfs-Desktop-builder/releases/download/droidspaces-rootfs-all-wayland/rootfs_zh.json)、[中文 RootFS（CNB）](https://cnb.cool/goldzxcbug/droidspaces-package/-/releases/download/droidspaces-rootfs-all-wayland/rootfs_zh.json) 或 [English RootFS（GitHub）](https://github.com/Goldzxcbug/Droidspaces-rootfs-Desktop-builder/releases/download/droidspaces-rootfs-all-wayland/rootfs_en.json)。
 
 ## 项目内容
 
@@ -25,7 +27,7 @@
 
 ## 支持范围
 
-构建目标：`Debian-13`、`Ubuntu-24`、`Ubuntu-25`、`Ubuntu-26`、`Fedora-43`、`Fedora-44`、`Arch`。Niri 目前只在 Arch Linux ARM 上提供。桌面及显示后端的完整兼容矩阵见[构建选项](docs/zh/构建选项.md)。
+构建目标：`Debian-13`、`Ubuntu-24`、`Ubuntu-25`、`Ubuntu-26`、`Fedora-43`、`Fedora-44`、`Arch`。GNOME、Niri、Hyprland、Mango 和 Denial 支持 Debian 13、Ubuntu 26、Fedora 43/44 与 Arch Linux ARM。桌面及显示后端的完整兼容矩阵见[构建选项](docs/zh/构建选项.md)。
 
 ## 致谢
 

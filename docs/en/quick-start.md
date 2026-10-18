@@ -2,6 +2,10 @@
 
 # Quick Start
 
+## Subscribe to the rolling desktop feed
+
+In Droidspaces repository management, add [Chinese RootFS (GitHub)](https://github.com/Goldzxcbug/Droidspaces-rootfs-Desktop-builder/releases/download/droidspaces-rootfs-all-wayland/rootfs_zh.json), [Chinese RootFS (CNB)](https://cnb.cool/goldzxcbug/droidspaces-package/-/releases/download/droidspaces-rootfs-all-wayland/rootfs_zh.json), or [English RootFS (GitHub)](https://github.com/Goldzxcbug/Droidspaces-rootfs-Desktop-builder/releases/download/droidspaces-rootfs-all-wayland/rootfs_en.json). Each Chinese index uses download URLs from its own source. The rolling release updates weekly and includes every Anland Wayland desktop for Debian 13, Ubuntu 26, Fedora 43/44, and Arch.
+
 ## 1. Build with GitHub Actions
 
 1. Fork this repository and open its `Actions` page.
@@ -32,4 +36,4 @@ The default username is `Gold` and the default password is `1234` (use your cust
 passwd
 ```
 
-`all` and `all-wayland` build multiple compatible targets. GNOME is available on Debian 13, Ubuntu 26, and Arch Linux ARM; Niri is available on Arch Linux ARM only. See the [compatibility matrix](build-options.md).
+`all` and `all-wayland` build multiple compatible targets. GNOME, Niri, Hyprland, Mango, and Denial are available on Debian 13, Ubuntu 26, Fedora 43/44, and Arch Linux ARM. See the [compatibility matrix](build-options.md).
