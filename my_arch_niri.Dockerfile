@@ -382,8 +382,13 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
             install -Dm644 "$ROOT/completions/completion.zsh" /usr/share/zsh/site-functions/_dms; \
         fi; \
         command -v dms; \
-        printf '1\n1\n3\n1\ny\n' | \
-            runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
+        ( sleep 3; printf '1\n'; sleep 1; \
+          printf '1\n'; sleep 1; \
+          printf '3\n'; sleep 1; \
+          printf '1\n'; sleep 1; \
+          printf 'y\n'; sleep 1; \
+          printf '1\n'; sleep 1 ) | \
+            timeout 300 runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
                 sh -c 'script -qec "dms setup" /dev/null'; \
         rm -rf /tmp/dux; \
     fi
