@@ -53,15 +53,15 @@ RUN install -D -m 0644 /tmp/Anland-Audio.conf /etc/wireplumber/wireplumber.conf.
     rm -f /tmp/Anland-Audio.conf
 
 # 添加执行权限/安装
-RUN chmod +x /usr/local/sbin/install-anland-niri /usr/local/sbin/install-mesa /usr/local/bin/droidspaces-tui /usr/local/bin/start-desktop-session /usr/local/lib/droidspaces/desktops/niri.sh && \
+RUN chmod +x /usr/local/sbin/install-anland-niri /usr/local/sbin/install-mesa /usr/local/bin/droidspaces-tui /usr/local/bin/start-desktop-session /usr/local/lib/droidspaces/desktops/niri /usr/local/sbin/configure-desktop && \
     ln -s droidspaces-tui /usr/local/bin/dstui && \
     sed -i '/^#ParallelDownloads/s/^#//' /etc/pacman.conf && \
-    sed -i '/NoExtract.*locale/d' /etc/pacman.conf && \ 
-    sed -i '/NoExtract.*i18n/d' /etc/pacman.conf && \ 
+    sed -i '/NoExtract.*locale/d' /etc/pacman.conf && \
+    sed -i '/NoExtract.*i18n/d' /etc/pacman.conf && \
     pacman -Sy --noconfirm archlinux-keyring archlinuxarm-keyring glibc && \
     pacman -Su --noconfirm && \
     pacman-key --lsign-key "farseerfc@archlinux.org" && \
-    pacman -S --noconfirm archlinuxcn-keyring \
+    pacman -S --noconfirm archlinuxcn-keyring && \
     pacman -S --noconfirm --needed \
     # 核心工具组件
     bash jq dialog coreutils file findutils grep sed gawk curl wget ca-certificates bash-completion dbus systemd pam fastfetch logrotate \
@@ -76,7 +76,7 @@ RUN chmod +x /usr/local/sbin/install-anland-niri /usr/local/sbin/install-mesa /u
     /usr/local/sbin/niri && \
     # 输入法 fcitx5 
     pacman -S --noconfirm --needed fcitx5-im \
-    fcitx5-chinese-addons\
+    fcitx5-chinese-addons \
     # 压缩工具扩展
     zip unzip p7zip bzip2 xz tar gzip
 
@@ -119,11 +119,11 @@ RUN for pam_file in /etc/pam.d/su /etc/pam.d/su-l; do \
 # 初始化环境变量文件；桌面专属变量由对应 profile 管理。
 RUN : > /etc/environment
 # 配置anland后端的GPU驱动环境变量
-RUN echo 'MESA_LOADER_DRIVER_OVERRIDE=kgsl' >> /etc/environment  \
-    echo 'GALLIUM_DRIVER=kgsl' >> /etc/environment \
-    echo 'FD_FORCE_KGSL=1' >> /etc/environment \
+RUN echo 'MESA_LOADER_DRIVER_OVERRIDE=kgsl' >> /etc/environment && \
+    echo 'GALLIUM_DRIVER=kgsl' >> /etc/environment && \
+    echo 'FD_FORCE_KGSL=1' >> /etc/environment && \
 # 修复8Gen2花屏
-    echo 'FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1' >> /etc/environment \
+    echo 'FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1' >> /etc/environment 
 
 # 输入法与桌面会话配置
 COPY scripts/start/ /tmp/droidspaces-start/
@@ -295,8 +295,7 @@ RUN rm -f \
         /usr/local/sbin/configure-desktop \
         /usr/local/sbin/niri \
         /usr/local/sbin/install-anland-niri \
-        /usr/local/sbin/install-droidspaces-usb-manager \
-
+        /usr/local/sbin/install-droidspaces-usb-manager 
     rm -rf /usr/local/lib/droidspaces/desktops && \
     rm -rf /var/cache/pacman/pkg/* /var/lib/pacman/sync/*
 # 阶段 2：将完整的根文件系统导出到 scratch（空白层），以便外部直接提取或打包成 tarfs
