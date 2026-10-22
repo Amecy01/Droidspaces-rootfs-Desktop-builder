@@ -12,8 +12,8 @@ on:
       password:
         description: 密码
         required: false
-        type: number
-        default: 0000
+        type: string
+        default: '0000'
       
       desktop_autostart:
         description: 桌面自启
