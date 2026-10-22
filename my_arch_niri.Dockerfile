@@ -1,11 +1,20 @@
 # ogarcia/archlinux基础arch镜像
 FROM ogarcia/archlinux AS customizer
 
+#######################################################
+ARG USERNAME
+ARG PASSWORD
+ARG ANLAND_RELEASE_REPOSITORY=Goldzxcbug/droidspaces-package
+ARG ANLAND_PACKAGE_REVISION=unknown
+######################################################
+
 # 复制全部所需脚本
 # 复制niri后端补丁脚本
 COPY scripts/tui/install-anland-niri.sh /usr/local/sbin/install-anland-niri
 # 复制安装除niri外的组件脚本
 COPY scripts/desktops/niri.sh /usr/local/lib/droidspaces/desktops/niri
+# 桌面配置
+COPY scripts/configure-desktop.sh /usr/local/sbin/configure-desktop
 # 复制安装骁龙GPU驱动脚本
 COPY scripts/tui/install-mesa.sh /usr/local/sbin/install-mesa
 # 复制声音配置文件
@@ -73,9 +82,9 @@ RUN chmod +x /usr/local/sbin/install-anland-niri /usr/local/sbin/install-mesa /u
 
 # 从固定滚动 GitHub Release 安装对应桌面的 ARM64 包。
 RUN echo "--> [enabled] Installing Anland niri packages (${ANLAND_PACKAGE_REVISION})..." && \
-        ANLAND_RELEASE_REPOSITORY="$ANLAND_RELEASE_REPOSITORY" \
-        ANLAND_NIRI_RELEASE_REPOSITORY="$ANLAND_RELEASE_REPOSITORY" \
-        /usr/local/sbin/install-anland-desktop "niri" --1 && \
+        ANLAND_RELEASE_REPOSITORY="${ANLAND_RELEASE_REPOSITORY}" \
+        ANLAND_NIRI_RELEASE_REPOSITORY="${ANLAND_RELEASE_REPOSITORY}" \
+        /usr/local/sbin/install-anland-niri --1 && \
         echo "--> [enabled] Anland niri support installed"
 
 # 配置 Locale 与 SSH
@@ -92,11 +101,11 @@ RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
     sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
     # 如果容器内存在默认的 alarm 或 arch 用户，则清理
     (userdel -r alarm 2>/dev/null || true) && \
-    useradd -m -s /bin/bash ${USERNAME} && echo "${username}:${password}" | chpasswd && \
+    useradd -m -s /bin/bash ${USERNAME} && echo "${USERNAME}:${PASSWORD}" | chpasswd && \
     systemctl enable sshd
 
 # 为所有 Arch RootFS 安装 Droidspaces USB Manager
-RUN /usr/local/sbin/install-droidspaces-usb-manager --user "${username}"
+RUN /usr/local/sbin/install-droidspaces-usb-manager --user "${USERNAME}"
 
 # 为 droidspaces 的 su/su -l 入口建立完整的 systemd 用户会话。
 RUN for pam_file in /etc/pam.d/su /etc/pam.d/su-l; do \
@@ -119,8 +128,8 @@ RUN echo 'MESA_LOADER_DRIVER_OVERRIDE=kgsl' >> /etc/environment  \
 # 输入法与桌面会话配置
 COPY scripts/start/ /tmp/droidspaces-start/
 RUN <<'EOF_RUN'
-    mkdir -p /home/${username}/.config/autostart
-    cat <<'EOF' > /home/${username}/.config/autostart/fcitx5.desktop
+    mkdir -p /home/${USERNAME}/.config/autostart
+    cat <<'EOF' > /home/${USERNAME}/.config/autostart/fcitx5.desktop
 [Desktop Entry]
 Name=Fcitx5
 GenericName=Input Method
@@ -141,8 +150,8 @@ SDL_IM_MODULE=fcitx5
 GLFW_IM_MODULE=fcitx
 EOF
 
-    echo 'export XDG_RUNTIME_DIR=/run/user/$(id -u)' >> /home/${username}/.bashrc
-    /usr/local/sbin/configure-desktop "niri" "anland-wayland" "true" "$username"
+    echo 'export XDG_RUNTIME_DIR=/run/user/$(id -u)' >> /home/${USERNAME}/.bashrc
+    /usr/local/sbin/configure-desktop "niri" "anland-wayland" "true" "$USERNAME"
     rm -rf /tmp/droidspaces-start
 EOF_RUN
 
@@ -178,7 +187,7 @@ grep -q '^aid_net_admin:' /etc/group || echo 'aid_net_admin:x:3005:' >> /etc/gro
 getent group droidspaces-gpu >/dev/null || groupadd -g 786 -r droidspaces-gpu
 # 为 root 用户赋予访问 Android 硬件及网络的权限组
 usermod -a -G aid_inet,aid_net_raw,input,video,tty,droidspaces-gpu root || true
-usermod -a -G aid_inet,aid_net_raw,input,video,tty,wheel,droidspaces-gpu ${username} || true
+usermod -a -G aid_inet,aid_net_raw,input,video,tty,wheel,droidspaces-gpu ${USERNAME} || true
 
 # 确保 Arch 赋予 sudo 权限给 wheel 组
 sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
@@ -283,13 +292,11 @@ EOF_RUN
 # 彻底清理 pacman 缓存
 # 打包前删除仅用于构建的一次性脚本；TUI 和运行时脚本保留。
 RUN rm -f \
-        /usr/local/sbin/configure-chrome \
         /usr/local/sbin/configure-desktop \
-        /usr/local/sbin/install-desktop \
-        /usr/local/sbin/install-anland-desktop \
+        /usr/local/sbin/niri \
+        /usr/local/sbin/install-anland-niri \
         /usr/local/sbin/install-droidspaces-usb-manager \
-        /usr/local/sbin/systemd257 \
-        /usr/local/sbin/nosnap && \
+
     rm -rf /usr/local/lib/droidspaces/desktops && \
     rm -rf /var/cache/pacman/pkg/* /var/lib/pacman/sync/*
 # 阶段 2：将完整的根文件系统导出到 scratch（空白层），以便外部直接提取或打包成 tarfs
