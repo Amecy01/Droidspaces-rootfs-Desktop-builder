@@ -18,12 +18,17 @@ on:
         description: 普通用户密码
         required: true
         type: string
-        default: '0000'
+        default: '1234'
       anland_repository:
         description: Anland 包仓库（owner/repo）
         required: true
         type: string
         default: Goldzxcbug/droidspaces-package
+      enable_dux:
+        description: 安装 dux shell（full ARM 包 + Quickshell/Qt6）
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -45,6 +50,7 @@ jobs:
           set -euo pipefail
           test -f my_arch_niri.Dockerfile || { echo "仓库根目录缺少 my_arch_niri.Dockerfile"; exit 1; }
           test -f my_niri.sh || { echo "仓库根目录缺少 my_niri.sh"; exit 1; }
+          test -d font || { echo "仓库根目录缺少 font/"; exit 1; }
           test -d scripts || { echo "仓库根目录缺少 scripts/"; exit 1; }
           test -f scripts/desktops/niri.sh
           test -f scripts/tui/install-anland-niri.sh
@@ -62,6 +68,7 @@ jobs:
             --build-arg PASSWORD="${{ inputs.password }}" \
             --build-arg ANLAND_RELEASE_REPOSITORY="${{ inputs.anland_repository }}" \
             --build-arg ANLAND_PACKAGE_REVISION=unknown \
+            --build-arg ENABLE_dux="${{ inputs.enable_dux }}" \
             -f my_arch_niri.Dockerfile \
             .
 
