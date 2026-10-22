@@ -1,0 +1,99 @@
+name: 构建 my_arch_niri
+
+# 在 fork 的 Droidspaces 自动构建仓库里直接运行：
+#   - 使用本仓库自己的 scripts/（不再检出上游）
+#   - Arch + niri 已写死，只支持 anland-wayland
+#
+# 前提：my_arch_niri.Dockerfile 放在仓库根目录。
+
+on:
+  workflow_dispatch:
+    inputs:
+      username:
+        description: 普通用户名
+        required: true
+        type: string
+        default: CSY
+      password:
+        description: 普通用户密码
+        required: true
+        type: string
+        default: '1234'
+      anland_repository:
+        description: Anland 包仓库（owner/repo）
+        required: true
+        type: string
+        default: Goldzxcbug/droidspaces-package
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-my-arch-niri
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 180
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 检查文件
+        run: |
+          set -euo pipefail
+          test -f my_arch_niri.Dockerfile || { echo "仓库根目录缺少 my_arch_niri.Dockerfile"; exit 1; }
+          test -f my_niri.sh || { echo "仓库根目录缺少 my_niri.sh"; exit 1; }
+          test -d scripts || { echo "仓库根目录缺少 scripts/"; exit 1; }
+          test -f scripts/desktops/niri.sh
+          test -f scripts/tui/install-anland-niri.sh
+          test -f scripts/tui/install-mesa.sh
+          docker version --format '{{.Server.Version}}'
+          docker buildx version
+
+      - name: 构建
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --target export \
+            --output type=tar,dest="$GITHUB_WORKSPACE/rootfs.tar" \
+            --build-arg USERNAME="${{ inputs.username }}" \
+            --build-arg PASSWORD="${{ inputs.password }}" \
+            --build-arg ANLAND_RELEASE_REPOSITORY="${{ inputs.anland_repository }}" \
+            --build-arg ANLAND_PACKAGE_REVISION=unknown \
+            -f my_arch_niri.Dockerfile \
+            .
+
+      - name: 写入推荐配置并压缩
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          cat > "$tmp/container.config" <<'EOF'
+# Droidspaces 推荐配置
+enable_anland=1
+enable_x11=0
+enable_pulseaudio=0
+enable_gpu_mode=1
+enable_hw_access=1
+use_sparse_image=0
+EOF
+          tar --format=ustar --owner=0 --group=0 --numeric-owner \
+            -cf "$tmp/config.tar" -C "$tmp" container.config
+          size="$(stat -c %s "$tmp/container.config")"
+          blocks=$((1 + (size + 511) / 512))
+          OUT="Arch-niri-Wayland-Droidspaces-rootfs-aarch64-r${GITHUB_RUN_NUMBER}.tar.xz"
+          {
+            dd if="$tmp/config.tar" bs=512 count="$blocks" status=none
+            cat rootfs.tar
+          } | xz -T0 -9 -c > "$OUT"
+          sha256sum "$OUT" | tee SHA256SUMS.txt
+
+      - name: 上传 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Arch-niri-rootfs-r${{ github.run_number }}
+          path: |
+            Arch-niri-Wayland-Droidspaces-rootfs-aarch64-r${{ github.run_number }}.tar.xz
+            SHA256SUMS.txt
+          retention-days: 7
