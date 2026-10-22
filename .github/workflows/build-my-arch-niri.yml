@@ -69,15 +69,15 @@ jobs:
         run: |
           set -euo pipefail
           tmp="$(mktemp -d)"
-          cat > "$tmp/container.config" <<'EOF'
-# Droidspaces 推荐配置
-enable_anland=1
-enable_x11=0
-enable_pulseaudio=0
-enable_gpu_mode=1
-enable_hw_access=1
-use_sparse_image=0
-EOF
+          printf '%s\n' \
+            '# Droidspaces 推荐配置' \
+            'enable_anland=1' \
+            'enable_x11=0' \
+            'enable_pulseaudio=0' \
+            'enable_gpu_mode=1' \
+            'enable_hw_access=1' \
+            'use_sparse_image=0' \
+            > "$tmp/container.config"
           tar --format=ustar --owner=0 --group=0 --numeric-owner \
             -cf "$tmp/config.tar" -C "$tmp" container.config
           size="$(stat -c %s "$tmp/container.config")"
