@@ -48,10 +48,23 @@ RUN pacman-key --init && \
 RUN pacman -S --noconfirm --needed \
         bash jq dialog coreutils file findutils grep sed gawk curl wget ca-certificates \
         bash-completion dbus systemd pam fastfetch logrotate util-linux \
-        git nano sudo \
+        git vim sudo make \
         openssh net-tools iptables iputils iproute2 bind \
         procps-ng \
         libarchive kmod tzdata tar
+
+# Yazi 与常用配套工具（jq/unzip/wl-clipboard/7zip 已由基础包、压缩工具、niri 提供）
+RUN pacman -S --noconfirm --needed \
+        yazi ffmpeg poppler fd ripgrep fzf zoxide \
+        imagemagick chafa bat trash-cli \
+        mpv imv zathura zathura-pdf-poppler
+
+# ble.sh（系统级安装到 /usr/share/blesh）
+RUN set -eux; \
+    git clone --depth 1 --recursive https://github.com/akinomyoga/ble.sh.git /tmp/ble.sh; \
+    make -C /tmp/ble.sh install PREFIX=/usr; \
+    test -f /usr/share/blesh/ble.sh; \
+    rm -rf /tmp/ble.sh
 
 # niri 的周边组件（profile 自带 install 参数）
 RUN /usr/local/lib/droidspaces/desktops/niri.sh install
@@ -79,7 +92,7 @@ RUN pacman -S --needed --noconfirm flatpak && \
     flatpak remote-modify flathub --url=https://mirrors.ustc.edu.cn/flathub
 
 # 压缩工具
-RUN pacman -S --noconfirm --needed zip unzip p7zip bzip2 xz tar gzip
+RUN pacman -S --noconfirm --needed zip unzip 7zip bzip2 xz tar gzip
 
 # 从固定滚动 GitHub Release 安装 Anland niri（Arch 只支持 anland-wayland）
 RUN echo "--> [enabled] Installing Anland niri packages (${ANLAND_PACKAGE_REVISION})..." && \
@@ -127,7 +140,9 @@ RUN : > /etc/environment
 RUN echo 'MESA_LOADER_DRIVER_OVERRIDE=kgsl' >> /etc/environment && \
     echo 'GALLIUM_DRIVER=kgsl' >> /etc/environment && \
     echo 'FD_FORCE_KGSL=1' >> /etc/environment && \
-    echo 'FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1' >> /etc/environment
+    echo 'FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1' >> /etc/environment && \
+    echo 'EDITOR=vim' >> /etc/environment && \
+    echo 'VISUAL=vim' >> /etc/environment
 
 # 输入法自启、会话环境、桌面配置
 COPY scripts/start/ /tmp/droidspaces-start/
@@ -156,6 +171,64 @@ GLFW_IM_MODULE=fcitx
 EOF
 
     echo 'export XDG_RUNTIME_DIR=/run/user/$(id -u)' >> "/home/${USERNAME}/.bashrc"
+    echo 'export EDITOR=vim VISUAL=vim' >> "/home/${USERNAME}/.bashrc"
+    echo 'command -v zoxide >/dev/null && eval "$(zoxide init bash)"' >> "/home/${USERNAME}/.bashrc"
+
+    cat <<'EOF' >> "/home/${USERNAME}/.bashrc"
+
+# bash-completion + ble.sh：必须放在 .bashrc 末尾
+if [[ $- == *i* ]]; then
+    [[ -f /usr/share/bash-completion/bash_completion ]] && \
+        source /usr/share/bash-completion/bash_completion
+    if [[ -z ${BLE_VERSION-} && -f /usr/share/blesh/ble.sh ]]; then
+        source /usr/share/blesh/ble.sh
+    fi
+    if [[ -n ${BLE_VERSION-} ]]; then
+        bleopt complete_auto_complete=1
+        bleopt complete_auto_history=1
+        bleopt history_share=1
+    fi
+fi
+
+# yazi：退出时把当前目录带回 shell
+y() {
+    local tmp cwd
+    tmp="$(mktemp -t yazi-cwd.XXXXXX)" || return
+    yazi "$@" --cwd-file="$tmp"
+    if cwd="$(command cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+        builtin cd -- "$cwd"
+    fi
+    rm -f -- "$tmp"
+}
+EOF
+
+    install -d -m 0755 "/home/${USERNAME}/.config/yazi"
+    cat <<'EOF' > "/home/${USERNAME}/.config/yazi/yazi.toml"
+[manager]
+ratio = [1, 4, 3]
+show_hidden = false
+linemode = "size"
+scrolloff = 5
+
+[preview]
+max_width = 1000
+max_height = 1000
+EOF
+
+    cat <<'EOF' > "/home/${USERNAME}/.config/mimeapps.list"
+[Default Applications]
+image/png=imv.desktop
+image/jpeg=imv.desktop
+image/gif=imv.desktop
+image/webp=imv.desktop
+video/mp4=mpv.desktop
+video/x-matroska=mpv.desktop
+video/webm=mpv.desktop
+application/pdf=org.pwmt.zathura.desktop
+EOF
+
+    chown -R "${USERNAME}:${USERNAME}" "/home/${USERNAME}/.config"
+
     /usr/local/sbin/configure-desktop "niri" "anland-wayland" "true" "${USERNAME}"
     rm -rf /tmp/droidspaces-start
 EOF_RUN
