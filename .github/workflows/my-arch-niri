@@ -1,0 +1,102 @@
+name: 我的Arch-niri-Rootfs
+
+on:
+  workflow_dispatch:
+    inputs:
+      username:
+        description: 用户名
+        required: false
+        type: string
+        default: CSY
+      
+      password:
+        description: 密码
+        required: false
+        type: string
+        default: 0000
+      
+      desktop_autostart:
+        description: 桌面自启
+        required: true
+        type: boolean
+        default: true
+      
+      enable_zh_tz:
+        description: 中文/上海时区
+        required: true
+        type: boolean
+        default: true
+      
+      enable_mesa:
+        description: 开启高通骁龙 GPU 支持
+        required: true
+        type: boolean
+        default: true
+      
+      enable_8gen2_wayland:
+        description: 修复骁龙 8 Gen 2 Wayland 花屏
+        required: true
+        type: boolean
+        default: false
+      
+      enable_srf:
+        description: 开启 fcitx5 输入法
+        required: true
+        type: boolean
+        default: true
+      
+      enable_binfmt:
+        description: 开启跨架构支持
+        required: true
+        type: boolean
+        default: false
+      
+      enable_yj:
+        description: 开启 NAT 和硬件识别
+        required: true
+        type: boolean
+        default: true
+      
+      enable_zip:
+        description: 安装压缩工具
+        required: true
+        type: boolean
+        default: true
+    
+      wayland_package_repository:
+        description: Wayland 软件包仓库（公开的 owner/repository）
+        required: true
+        type: string
+        default: Goldzxcbug/droidspaces-package
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: 构建
+    uses: ./.github/workflows/my-arch-niri-core.yml
+    with:
+      ui_language: zh
+      
+      username: ${{ inputs.username }}
+      
+      password: ${{ inputs.password }}
+
+      desktop_autostart: ${{ inputs.desktop_autostart }}
+
+      enable_zh_tz: ${{ inputs.enable_zh_tz }}
+      
+      enable_mesa: ${{ inputs.enable_mesa }}
+      
+      enable_8gen2_wayland: ${{ inputs.enable_8gen2_wayland }}
+      
+      enable_srf: ${{ inputs.enable_srf }}
+      
+      enable_binfmt: ${{ inputs.enable_binfmt }}
+      
+      enable_yj: ${{ inputs.enable_yj }}
+
+      enable_zip: ${{ inputs.enable_zip }}
+
+      wayland_package_repository: ${{ inputs.wayland_package_repository }}
