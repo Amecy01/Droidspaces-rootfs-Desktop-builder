@@ -3,7 +3,7 @@ FROM ogarcia/archlinux AS customizer
 
 #######################################################
 ARG USERNAME
-ARG PASSWORD
+ARG PASSWORD=0000
 ARG ANLAND_RELEASE_REPOSITORY=Goldzxcbug/droidspaces-package
 ARG ANLAND_PACKAGE_REVISION=unknown
 ARG ENABLE_dux=false
@@ -362,11 +362,12 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
                 | jq -r '.assets[]?.browser_download_url')"; \
         URL="$(printf '%s\n' "$ASSETS" \
                 | grep -i 'full' | grep -Ei 'aarch64|arm64|armv8' \
-                | grep -E '\.tar\.xz$' | head -1)"; \
-        [ -n "$URL" ] || { echo "dux: 最新 Release 没有 full ARM tar.xz，可用资产：" >&2; printf '%s\n' "$ASSETS" >&2; exit 1; }; \
+                | grep -vi 'freebsd' \
+                | grep -E '\.tar\.(gz|xz)$' | head -1)"; \
+        [ -n "$URL" ] || { echo "dux: 最新 Release 没有 full ARM tar.gz/tar.xz，可用资产：" >&2; printf '%s\n' "$ASSETS" >&2; exit 1; }; \
         rm -rf /tmp/dux; mkdir -p /tmp/dux; \
-        curl -fL "$URL" -o /tmp/dux/full.tar.xz; \
-        tar -xJf /tmp/dux/full.tar.xz -C /tmp/dux; \
+        curl -fL "$URL" -o /tmp/dux/full.tar; \
+        tar -xf /tmp/dux/full.tar -C /tmp/dux; \
         BIN="$(find /tmp/dux -type f -path '*/bin/dms' | head -1)"; \
         [ -n "$BIN" ] || { echo "dux: 包里没有 bin/dms，实际内容：" >&2; find /tmp/dux -maxdepth 3 -type f >&2; exit 1; }; \
         ROOT="$(dirname "$(dirname "$BIN")")"; \
