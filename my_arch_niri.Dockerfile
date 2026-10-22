@@ -295,15 +295,22 @@ RUN pacman -Sy --noconfirm && \
 # yay / paru 直接从 CN 仓库装（有 aarch64 预编译包）
 RUN pacman -S --noconfirm --needed base-devel yay paru
 
-# Brave Origin：官方脚本优先；失败用刚装好的 yay/paru 回退 AUR
+# Brave Origin：官方脚本以普通用户运行；失败或没装上再回退 yay/paru
 RUN set -eux; \
-    if ! curl -fsS https://dl.brave.com/install.sh | FLAVOR=origin sh; then \
-        echo "官方脚本失败，改用 yay 装 AUR brave-origin-bin"; \
-        printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/90-build; \
-        runuser -u "$USERNAME" -- yay -S --needed --noconfirm brave-origin-bin \
-            || runuser -u "$USERNAME" -- paru -S --needed --noconfirm brave-origin-bin; \
-        rm -f /etc/sudoers.d/90-build; \
+    trap 'rm -f /etc/sudoers.d/90-build' EXIT; \
+    printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/90-build; \
+    chmod 0440 /etc/sudoers.d/90-build; \
+    if ! runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
+            sh -c 'curl -fsS https://dl.brave.com/install.sh | FLAVOR=origin sh'; then \
+        echo "官方脚本失败，改用 yay/paru 装 AUR brave-origin-bin"; \
     fi; \
+    if ! command -v brave-origin >/dev/null 2>&1; then \
+        runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
+            yay -S --needed --noconfirm brave-origin-bin \
+            || runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
+                paru -S --needed --noconfirm brave-origin-bin; \
+    fi; \
+    rm -f /etc/sudoers.d/90-build; \
     command -v brave-origin; \
     find /opt -maxdepth 4 -name chrome-sandbox -exec chmod 4755 {} \; || true
 
@@ -405,9 +412,11 @@ RUN rm -f \
         /var/lib/pacman/sync/* \
         /tmp/* \
         /root/.cache \
+        "/home/${USERNAME}/.cache" \
         /var/lib/systemd/random-seed && \
     : > /etc/machine-id && \
-    rm -f /etc/ssh/ssh_host_*
+    rm -f /etc/ssh/ssh_host_* && \
+    test ! -e /etc/sudoers.d/90-build
 
 FROM scratch AS export
 COPY --from=customizer / /
