@@ -18,7 +18,7 @@ on:
         description: 普通用户密码
         required: true
         type: string
-        default: '1234'
+        default: '0000'
       anland_repository:
         description: Anland 包仓库（owner/repo）
         required: true
