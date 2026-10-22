@@ -12,7 +12,7 @@ on:
       password:
         description: 密码
         required: false
-        type: password
+        type: number
         default: 0000
       
       desktop_autostart:
