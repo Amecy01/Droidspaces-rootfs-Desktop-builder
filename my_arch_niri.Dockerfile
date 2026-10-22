@@ -6,6 +6,7 @@ ARG USERNAME
 ARG PASSWORD
 ARG ANLAND_RELEASE_REPOSITORY=Goldzxcbug/droidspaces-package
 ARG ANLAND_PACKAGE_REVISION=unknown
+ARG ENABLE_dux=false
 ######################################################
 
 # 复制全部所需脚本（niri profile 用自定义的 my_niri.sh）
@@ -16,26 +17,7 @@ COPY scripts/tui/install-mesa.sh /usr/local/sbin/install-mesa
 COPY scripts/etc/wireplumber/wireplumber.conf.d/Anland-Audio.conf /tmp/Anland-Audio.conf
 COPY scripts/install-usb-manager.sh /usr/local/sbin/install-droidspaces-usb-manager
 COPY scripts/start-desktop-session.sh /usr/local/bin/start-desktop-session
-
-# 更换加速镜像源（heredoc 用引号，保留 $repo 给 pacman 替换）
-RUN tee /etc/pacman.d/mirrorlist >/dev/null <<'EOF'
-# Arch Linux ARM repository mirrorlist
-Server = https://mirrors.ustc.edu.cn/archlinuxarm/aarch64/$repo
-Server = https://mirrors.aliyun.com/archlinuxarm/aarch64/$repo
-Server = https://mirrors.tuna.tsinghua.edu.cn/archlinuxarm/aarch64/$repo
-Server = https://mirror.sjtu.edu.cn/archlinuxarm/aarch64/$repo
-Server = https://mirrors.bfsu.edu.cn/archlinuxarm/aarch64/$repo
-Server = http://mirror.archlinuxarm.org/aarch64/$repo
-EOF
-
-# 添加 CN 仓库
-RUN tee -a /etc/pacman.conf >/dev/null <<'EOF'
-
-[archlinuxcn]
-Server = https://mirrors.ustc.edu.cn/archlinuxcn/$arch
-Server = https://mirrors.aliyun.com/archlinuxcn/$arch
-Server = https://mirrors.tuna.tsinghua.edu.cn/archlinuxcn/$arch
-EOF
+COPY font/ /tmp/font/
 
 # 安装声音配置文件
 RUN install -D -m 0644 /tmp/Anland-Audio.conf /etc/wireplumber/wireplumber.conf.d/Anland-Audio.conf && \
@@ -51,20 +33,21 @@ RUN chmod +x \
         /usr/local/lib/droidspaces/desktops/niri.sh && \
     sed -i '/^#ParallelDownloads/s/^#//' /etc/pacman.conf && \
     sed -i '/NoExtract.*locale/d' /etc/pacman.conf && \
-    sed -i '/NoExtract.*i18n/d' /etc/pacman.conf
+    sed -i '/NoExtract.*i18n/d' /etc/pacman.conf && \
+    sed -i 's/^#\s*LocalFileSigLevel.*/LocalFileSigLevel = Optional/' /etc/pacman.conf && \
+    { grep -qE '^[[:space:]]*LocalFileSigLevel' /etc/pacman.conf || \
+      sed -i '/^\[options\]/a LocalFileSigLevel = Optional' /etc/pacman.conf; }
 
-# keyring：先装 Arch/ARM 的钥匙，再装 CN 的钥匙，最后统一 populate
-RUN pacman -Sy --noconfirm archlinux-keyring archlinuxarm-keyring glibc && \
+# keyring：必须先 init 生成 secret key，否则 keyring 包的安装脚本无法 lsign
+RUN pacman-key --init && \
+    pacman -Sy --noconfirm archlinux-keyring archlinuxarm-keyring glibc && \
     pacman -Su --noconfirm && \
-    { [ -d /etc/pacman.d/gnupg ] || pacman-key --init; } && \
-    pacman-key --populate archlinux archlinuxarm && \
-    pacman -S --noconfirm --needed archlinuxcn-keyring && \
-    pacman-key --populate archlinuxcn
+    pacman-key --populate archlinux archlinuxarm
 
 # 基础工具
 RUN pacman -S --noconfirm --needed \
         bash jq dialog coreutils file findutils grep sed gawk curl wget ca-certificates \
-        bash-completion dbus systemd pam fastfetch logrotate \
+        bash-completion dbus systemd pam fastfetch logrotate util-linux \
         git nano sudo \
         openssh net-tools iptables iputils iproute2 bind \
         procps-ng \
@@ -73,8 +56,27 @@ RUN pacman -S --noconfirm --needed \
 # niri 的周边组件（profile 自带 install 参数）
 RUN /usr/local/lib/droidspaces/desktops/niri.sh install
 
+# 字体：font/ 里的 ttf/otf 放到系统字体目录，fonts.conf 放到 local.conf
+RUN set -eux; \
+    install -d -m 0755 /usr/local/share/fonts; \
+    if [ -d /tmp/font ]; then \
+        find /tmp/font -maxdepth 1 -type f \
+            \( -iname '*.ttf' -o -iname '*.otf' -o -iname '*.ttc' \) \
+            -exec cp -v {} /usr/local/share/fonts/ \;; \
+        if [ -f /tmp/font/fonts.conf ]; then \
+            install -Dm644 /tmp/font/fonts.conf /etc/fonts/local.conf; \
+        fi; \
+        rm -rf /tmp/font; \
+    fi; \
+    fc-cache -f
+
 # 输入法
 RUN pacman -S --noconfirm --needed fcitx5-im fcitx5-chinese-addons
+
+# Flatpak + USTC 镜像
+RUN pacman -S --needed --noconfirm flatpak && \
+    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo && \
+    flatpak remote-modify flathub --url=https://mirrors.ustc.edu.cn/flathub
 
 # 压缩工具
 RUN pacman -S --noconfirm --needed zip unzip p7zip bzip2 xz tar gzip
@@ -85,6 +87,11 @@ RUN echo "--> [enabled] Installing Anland niri packages (${ANLAND_PACKAGE_REVISI
     ANLAND_NIRI_RELEASE_REPOSITORY="${ANLAND_RELEASE_REPOSITORY}" \
     /usr/local/sbin/install-anland-niri --1 && \
     echo "--> [enabled] Anland niri support installed"
+
+# niri -> niri-anland 包装器
+RUN printf '#!/bin/sh\nexec /usr/bin/niri-anland "$@"\n' \
+        | tee /usr/local/bin/niri >/dev/null && \
+    chmod +x /usr/local/bin/niri
 
 # 配置 Locale 与 SSH
 RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
@@ -271,6 +278,118 @@ fi
 
 echo "Post-extraction fixes applied on $(date)" > /etc/droidspaces
 EOF_RUN
+
+# 构建阶段 ALARM 用官方源；CN 仓库用你给的那三个镜像
+RUN tee -a /etc/pacman.conf >/dev/null <<'EOF'
+
+[archlinuxcn]
+Server = https://mirrors.ustc.edu.cn/archlinuxcn/$arch
+Server = https://mirrors.aliyun.com/archlinuxcn/$arch
+Server = https://mirrors.tuna.tsinghua.edu.cn/archlinuxcn/$arch
+EOF
+
+RUN pacman -Sy --noconfirm && \
+    pacman -S --noconfirm --needed archlinuxcn-keyring && \
+    pacman-key --populate archlinuxcn
+
+# yay / paru 直接从 CN 仓库装（有 aarch64 预编译包）
+RUN pacman -S --noconfirm --needed base-devel yay paru
+
+# Brave Origin：官方脚本优先；失败用刚装好的 yay/paru 回退 AUR
+RUN set -eux; \
+    if ! curl -fsS https://dl.brave.com/install.sh | FLAVOR=origin sh; then \
+        echo "官方脚本失败，改用 yay 装 AUR brave-origin-bin"; \
+        printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/90-build; \
+        runuser -u "$USERNAME" -- yay -S --needed --noconfirm brave-origin-bin \
+            || runuser -u "$USERNAME" -- paru -S --needed --noconfirm brave-origin-bin; \
+        rm -f /etc/sudoers.d/90-build; \
+    fi; \
+    command -v brave-origin; \
+    find /opt -maxdepth 4 -name chrome-sandbox -exec chmod 4755 {} \; || true
+
+# Brave Origin 默认启用 Default ANGLE Vulkan（修复字体闪烁）
+RUN set -eux; \
+    REAL="$(command -v brave-origin)"; \
+    [ "$REAL" != "/usr/local/bin/brave-origin" ]; \
+    printf '#!/bin/sh\nexec %s --enable-features=DefaultANGLEVulkan "$@"\n' "$REAL" \
+        > /usr/local/bin/brave-origin; \
+    chmod 0755 /usr/local/bin/brave-origin; \
+    for f in /usr/share/applications/brave-origin*.desktop; do \
+        [ -e "$f" ] || continue; \
+        sed -i -e 's|^Exec=.*brave-origin.*|Exec=/usr/local/bin/brave-origin %U|' \
+               -e 's|^TryExec=.*brave-origin.*|TryExec=/usr/local/bin/brave-origin|' "$f"; \
+    done
+
+# polkit（内核 <6.5）：setuid helper + 屏蔽 socket + 锁版本
+RUN set -eux; \
+    H=""; \
+    for p in /usr/lib/polkit-1/polkit-agent-helper-1 /usr/libexec/polkit-agent-helper-1; do \
+        if [ -f "$p" ]; then H="$p"; break; fi; \
+    done; \
+    if [ -n "$H" ]; then chown root:root "$H"; chmod 4755 "$H"; fi; \
+    mkdir -p /etc/systemd/system; \
+    ln -sf /dev/null /etc/systemd/system/polkit-agent-helper.socket; \
+    if grep -qE '^[[:space:]]*IgnorePkg[[:space:]]*=.*(^|[[:space:]])polkit([[:space:]]|$)' /etc/pacman.conf; then \
+        true; \
+    elif grep -qE '^[[:space:]]*IgnorePkg[[:space:]]*=' /etc/pacman.conf; then \
+        sed -i -E '0,/^[[:space:]]*IgnorePkg[[:space:]]*=/{s/^([[:space:]]*IgnorePkg[[:space:]]*=.*)$/\1 polkit/}' /etc/pacman.conf; \
+    else \
+        sed -i '/^\[options\]/a IgnorePkg = polkit' /etc/pacman.conf; \
+    fi
+
+# 可选：dux shell（full ARM 资产；先装 Quickshell + Qt6 依赖）
+RUN if [ "$ENABLE_dux" = "true" ]; then \
+        set -eux; \
+        pacman -S --needed --noconfirm \
+            qt6-base qt6-declarative qt6-wayland qt6-svg qt6-5compat qt6-tools qt6-shadertools; \
+        pacman -S --needed --noconfirm cpptrace libdwarf 2>/dev/null || true; \
+        if pacman -Si quickshell >/dev/null 2>&1; then \
+            pacman -S --needed --noconfirm quickshell; \
+        else \
+            printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/90-build; \
+            runuser -u "$USERNAME" -- yay -S --needed --noconfirm quickshell \
+                || runuser -u "$USERNAME" -- paru -S --needed --noconfirm quickshell; \
+            rm -f /etc/sudoers.d/90-build; \
+        fi; \
+        ASSETS="$(curl -fsSL https://api.github.com/repos/duxlabs-dev/dux-shell/releases/latest \
+                | jq -r '.assets[]?.browser_download_url')"; \
+        URL="$(printf '%s\n' "$ASSETS" \
+                | grep -i 'full' | grep -Ei 'aarch64|arm64|armv8' \
+                | grep -E '\.tar\.xz$' | head -1)"; \
+        [ -n "$URL" ] || { echo "dux: 最新 Release 没有 full ARM tar.xz，可用资产：" >&2; printf '%s\n' "$ASSETS" >&2; exit 1; }; \
+        rm -rf /tmp/dux; mkdir -p /tmp/dux; \
+        curl -fL "$URL" -o /tmp/dux/full.tar.xz; \
+        tar -xJf /tmp/dux/full.tar.xz -C /tmp/dux; \
+        BIN="$(find /tmp/dux -type f -path '*/bin/dms' | head -1)"; \
+        [ -n "$BIN" ] || { echo "dux: 包里没有 bin/dms，实际内容：" >&2; find /tmp/dux -maxdepth 3 -type f >&2; exit 1; }; \
+        ROOT="$(dirname "$(dirname "$BIN")")"; \
+        install -Dm755 "$BIN" /usr/local/bin/dms; \
+        if [ -f "$ROOT/completions/completion.bash" ]; then \
+            install -Dm644 "$ROOT/completions/completion.bash" /usr/share/bash-completion/completions/dms; \
+        fi; \
+        if [ -f "$ROOT/completions/completion.fish" ]; then \
+            install -Dm644 "$ROOT/completions/completion.fish" /usr/share/fish/vendor_completions.d/dms.fish; \
+        fi; \
+        if [ -f "$ROOT/completions/completion.zsh" ]; then \
+            install -Dm644 "$ROOT/completions/completion.zsh" /usr/share/zsh/site-functions/_dms; \
+        fi; \
+        command -v dms; \
+        printf '1\n1\n3\n1\ny\n' | \
+            runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
+                sh -c 'script -qec "dms setup" /dev/null'; \
+        rm -rf /tmp/dux; \
+    fi
+
+# 成品源：保留你原来的 ALARM 镜像列表
+RUN tee /etc/pacman.d/mirrorlist >/dev/null <<'EOF'
+# Arch Linux ARM repository mirrorlist
+Server = https://mirrors.ustc.edu.cn/archlinuxarm/aarch64/$repo
+Server = https://mirrors.aliyun.com/archlinuxarm/aarch64/$repo
+Server = https://mirrors.tuna.tsinghua.edu.cn/archlinuxarm/aarch64/$repo
+Server = https://mirror.sjtu.edu.cn/archlinuxarm/aarch64/$repo
+Server = https://mirrors.bfsu.edu.cn/archlinuxarm/aarch64/$repo
+Server = http://mirror.archlinuxarm.org/aarch64/$repo
+EOF
 
 # 清理：构建期脚本、TUI、缓存、日志、临时目录、machine-id、SSH host key
 RUN rm -f \
