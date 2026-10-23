@@ -230,7 +230,7 @@ RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
 # Flatpak 不能通过 --filesystem 暴露 /usr；给用户目录复制一份字体
 RUN install -d -o "$USERNAME" -g "$USERNAME" "/home/$USERNAME/.local/share/fonts" && \
     cp /usr/local/share/fonts/*.ttf "/home/$USERNAME/.local/share/fonts/" && \
-    chown -R "$USERNAME:$USERNAME" "/home/$USERNAME/.local/share/fonts"
+    chown -R "$USERNAME:$USERNAME" "/home/$USERNAME/.local"
 
 # Flatpak 全局“最小宽容”：托盘、Wayland/X11、GPU、音频、输入法、字体、GTK 配置
 # 本机 Flatpak runtime 没有 Anland/kgsl Mesa，GTK4 统一走 Cairo，避免 GSK/EGL 崩溃
