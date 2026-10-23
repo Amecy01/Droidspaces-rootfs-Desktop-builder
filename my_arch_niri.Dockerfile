@@ -246,7 +246,10 @@ RUN echo 'MESA_LOADER_DRIVER_OVERRIDE=kgsl' >> /etc/environment && \
     echo 'FD_FORCE_KGSL=1' >> /etc/environment && \
     echo 'FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1' >> /etc/environment && \
     echo 'EDITOR=vim' >> /etc/environment && \
-    echo 'VISUAL=vim' >> /etc/environment
+    echo 'VISUAL=vim' >> /etc/environment && \
+    echo 'TERMINAL=alacritty' >> /etc/environment && \
+    echo 'MOZ_ENABLE_WAYLAND=1' >> /etc/environment && \
+    echo 'ELECTRON_OZONE_PLATFORM_HINT=auto' >> /etc/environment
 
 # 输入法自启、会话环境、桌面配置
 COPY scripts/start/ /tmp/droidspaces-start/
