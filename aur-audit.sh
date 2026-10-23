@@ -23,22 +23,9 @@ if ! compgen -G '/var/lib/pacman/sync/*.db' >/dev/null; then
     echo >&2
 fi
 
-# 先用本地 Packager 元数据排除明显的官方包/厂商包，减少 RPC 请求。
-# AUR 包通常是 Unknown Packager，或者由用户自己的 makepkg 生成。
-CANDIDATES=()
-for pkg in "${FOREIGN[@]}"; do
-    packager=$(pacman -Qi "$pkg" 2>/dev/null | awk -F': ' '/^Packager/{print $2; exit}')
-    case "$packager" in
-        *"Arch Linux"*|*"Brave Software"*|*"Microsoft"*|*"Google"*)
-            continue ;;
-    esac
-    CANDIDATES+=("$pkg")
-done
-
-if ((${#CANDIDATES[@]} == 0)); then
-    echo "没有需要审计的 AUR 候选包（foreign 包都被识别为官方/厂商包）。"
-    exit 0
-fi
+# 不能只用 Packager 跳过：AUR 包可以把 Packager 伪造成 Arch Linux。
+# 这里全部交给 AUR RPC 判断，AUR 查不到才跳过。
+CANDIDATES=("${FOREIGN[@]}")
 
 # 批量查询 AUR RPC，只有 AUR 返回结果的包才进入审计。
 declare -A AUR_VERSION AUR_VOTES AUR_MAINT AUR_OUTOF AUR_BASE
@@ -191,12 +178,19 @@ for pkg in "${AUR_PKGS[@]}"; do
         notes+=("PKGBUILD:unavailable")
     fi
 
+    version=$(pacman -Qi "$pkg" 2>/dev/null | awk -F': ' '/^Version/{print $2; exit}')
+    packager=$(pacman -Qi "$pkg" 2>/dev/null | awk -F': ' '/^Packager/{print $2; exit}')
+    case "$packager" in
+        *"Arch Linux"*|*"Brave Software"*|*"Microsoft"*|*"Google"*)
+            score=$((score + 5))
+            notes+=("packager:official-name") ;;
+    esac
+
     level="LOW"; color="$GRN"
     if ((score >= 10)); then level="HIGH"; color="$RED"; HIGH=$((HIGH + 1))
     elif ((score >= 5)); then level="MED"; color="$YEL"; MED=$((MED + 1))
     else LOW=$((LOW + 1)); fi
 
-    version=$(pacman -Qi "$pkg" 2>/dev/null | awk -F': ' '/^Version/{print $2; exit}')
     printf '%-28s %-12s %-6s %-8s %s%-8s%s %s\n' \
         "$pkg" "${version:--}" "$votes" "$score" "$color" "$level" "$RESET" \
         "$(IFS=','; echo "${notes[*]:-none}")"
