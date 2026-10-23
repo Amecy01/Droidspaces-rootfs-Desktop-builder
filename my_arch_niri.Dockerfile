@@ -643,6 +643,7 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
 
 # 启用 DMS 时让它启动即锁屏（DMS 的 Lock.qml 检查 lockAtStartup）
 RUN if [ "$ENABLE_dux" = "true" ]; then \
+        set -e; \
         SETTINGS="/home/$USERNAME/.config/dms/settings.json"; \
         install -d -o "$USERNAME" -g "$USERNAME" "/home/$USERNAME/.config/dms"; \
         if [ -f "$SETTINGS" ]; then \
