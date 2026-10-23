@@ -1,5 +1,0 @@
-// 外观补丁入口：由安装脚本 include 到主配置
-include optional=true "layout.kdl"
-include optional=true "animations.kdl"
-include optional=true "blur.kdl"
-

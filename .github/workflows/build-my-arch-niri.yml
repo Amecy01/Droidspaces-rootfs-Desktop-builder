@@ -25,12 +25,7 @@ on:
         type: string
         default: Goldzxcbug/droidspaces-package
       enable_dux:
-        description: 安装 dux shell（full ARM 包 + Quickshell/Qt6）
-        required: true
-        type: boolean
-        default: false
-      enable_appearance:
-        description: 套用最小外观（niri 布局/动画/blur + Matugen + GTK）
+        description: 安装 DMS（含 starship 提示符与壁纸）
         required: true
         type: boolean
         default: false
@@ -56,7 +51,7 @@ jobs:
           test -f my_arch_niri.Dockerfile || { echo "仓库根目录缺少 my_arch_niri.Dockerfile"; exit 1; }
           test -f my_niri.sh || { echo "仓库根目录缺少 my_niri.sh"; exit 1; }
           test -d font || { echo "仓库根目录缺少 font/"; exit 1; }
-          test -d appearance || { echo "仓库根目录缺少 appearance/"; exit 1; }
+          test -d dms-extras || { echo "仓库根目录缺少 dms-extras/"; exit 1; }
           test -d scripts || { echo "仓库根目录缺少 scripts/"; exit 1; }
           test -f scripts/desktops/niri.sh
           test -f scripts/tui/install-anland-niri.sh
@@ -75,7 +70,6 @@ jobs:
             --build-arg ANLAND_RELEASE_REPOSITORY="${{ inputs.anland_repository }}" \
             --build-arg ANLAND_PACKAGE_REVISION=unknown \
             --build-arg ENABLE_dux="${{ inputs.enable_dux }}" \
-            --build-arg ENABLE_APPEARANCE="${{ inputs.enable_appearance }}" \
             -f my_arch_niri.Dockerfile \
             .
 

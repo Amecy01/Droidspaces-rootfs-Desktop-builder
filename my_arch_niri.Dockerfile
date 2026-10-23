@@ -7,7 +7,6 @@ ARG PASSWORD=0000
 ARG ANLAND_RELEASE_REPOSITORY=Goldzxcbug/droidspaces-package
 ARG ANLAND_PACKAGE_REVISION=unknown
 ARG ENABLE_dux=false
-ARG ENABLE_APPEARANCE=false
 ######################################################
 
 # 复制全部所需脚本（niri profile 用自定义的 my_niri.sh）
@@ -21,7 +20,7 @@ COPY scripts/start-desktop-session.sh /usr/local/bin/start-desktop-session
 COPY aur-audit.sh /usr/local/bin/aur-audit
 COPY aur-review.sh /usr/local/bin/aur-review
 COPY font/ /tmp/font/
-COPY appearance/ /usr/share/droidspaces-appearance/
+COPY dms-extras/wallpapers/ /usr/share/droidspaces-wallpapers/
 
 # 安装声音配置文件
 RUN install -D -m 0644 /tmp/Anland-Audio.conf /etc/wireplumber/wireplumber.conf.d/Anland-Audio.conf && \
@@ -514,9 +513,8 @@ RUN pacman -Sy --noconfirm && \
 # yay / paru 直接从 CN 仓库装（有 aarch64 预编译包）
 RUN pacman -S --noconfirm --needed base-devel yay paru
 
-# DMS 动态主题需要 matugen；外观补丁的模板也用它。
-# 只在启用 DMS 或外观时安装，避免纯 niri 也被塞 AUR 构建。
-RUN if [ "$ENABLE_dux" = "true" ] || [ "$ENABLE_APPEARANCE" = "true" ]; then \
+# DMS 动态主题需要 matugen
+RUN if [ "$ENABLE_dux" = "true" ]; then \
         set -eux; \
         trap 'rm -f /etc/sudoers.d/90-build' EXIT; \
         if pacman -Si matugen >/dev/null 2>&1; then \
@@ -661,24 +659,19 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
         chown "$USERNAME:$USERNAME" "$SETTINGS"; \
     fi
 
-# 可选：最小外观补丁（niri 布局/动画/blur + Matugen + GTK + fuzzel/alacritty）
-RUN if [ "$ENABLE_APPEARANCE" = "true" ]; then \
+# DMS 附加：starship 提示符 + 壁纸（不再单独提供外观选项）
+RUN if [ "$ENABLE_dux" = "true" ]; then \
         set -eux; \
-        for p in adw-gtk-theme btop starship gnome-themes-extra; do \
-            pacman -S --needed --noconfirm "$p" || true; \
-        done; \
-        if [ ! -d /usr/share/themes/adw-gtk3-dark ] && [ ! -d /usr/share/themes/adw-gtk3 ]; then \
-            printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/90-build; \
-            chmod 0440 /etc/sudoers.d/90-build; \
-            runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
-                yay -S --needed --noconfirm adw-gtk3 \
-                || runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
-                    yay -S --needed --noconfirm adw-gtk3-git \
-                || true; \
-            rm -f /etc/sudoers.d/90-build; \
+        pacman -S --needed --noconfirm starship || true; \
+        install -d "/home/$USERNAME/Pictures/Wallpapers"; \
+        cp /usr/share/droidspaces-wallpapers/* "/home/$USERNAME/Pictures/Wallpapers/"; \
+        if command -v starship >/dev/null 2>&1 && \
+           ! grep -q 'starship init bash' "/home/$USERNAME/.bashrc"; then \
+            printf '\n# starship prompt\neval "$(starship init bash)"\n' >> "/home/$USERNAME/.bashrc"; \
         fi; \
-        chmod +x /usr/share/droidspaces-appearance/install.sh; \
-        /usr/share/droidspaces-appearance/install.sh "$USERNAME"; \
+        chown -R "$USERNAME:$USERNAME" \
+            "/home/$USERNAME/Pictures" \
+            "/home/$USERNAME/.bashrc"; \
     fi
 
 # 成品源：保留你原来的 ALARM 镜像列表
@@ -702,7 +695,7 @@ RUN rm -f \
         /usr/local/bin/dstui \
         /var/log/pacman.log && \
     rm -rf /usr/local/lib/droidspaces/desktops \
-        /usr/share/droidspaces-appearance \
+        /usr/share/droidspaces-wallpapers \
         /var/cache/pacman/pkg/* \
         /var/lib/pacman/sync/* \
         /tmp/* \
