@@ -460,9 +460,10 @@ ExecStart=
 ExecStart=-/usr/bin/udevadm trigger --subsystem-match=usb --subsystem-match=block --subsystem-match=input --subsystem-match=tty --subsystem-match=net
 EOF
 
-# Droidspaces 容器里 udev 无法绑定 netlink/写入 /sys，屏蔽掉避免 systemctl --failed
-for unit in systemd-udevd.service systemd-udevd-kernel.socket systemd-udevd-control.socket systemd-udevd-varlink.socket systemd-udev-trigger.service systemd-udev-settle.service; do
-    ln -sf /dev/null "/etc/systemd/system/${unit}"
+# 针对只读文件系统路径覆盖（官方方案）
+for unit in systemd-udevd.service systemd-udev-trigger.service systemd-udev-settle.service systemd-udevd-kernel.socket systemd-udevd-control.socket; do
+    mkdir -p "/etc/systemd/system/${unit}.d"
+    printf "[Unit]\nConditionPathIsReadWrite=\n" > "/etc/systemd/system/${unit}.d/99-readonly-fix.conf"
 done
 
 for unit in NetworkManager.service dhcpcd.service systemd-resolved.service systemd-networkd.service; do
