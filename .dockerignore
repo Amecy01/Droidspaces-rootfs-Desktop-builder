@@ -1,0 +1,11 @@
+.git
+.github
+docs
+*.md
+Arch.Dockerfile
+Debian-*.Dockerfile
+Fedora-*.Dockerfile
+Ubuntu-*.Dockerfile
+build_rootfs-native.sh
+build_rootfs-qemu-aarch64.sh
+README*

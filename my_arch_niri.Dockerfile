@@ -558,9 +558,10 @@ polkit.addRule(function(action, subject) {
     if (!subject.isInGroup("wheel")) {
         return null;
     }
-    if (action.id == "org.freedesktop.Flatpak.app-install" ||
-        action.id == "org.freedesktop.Flatpak.app-uninstall" ||
-        action.id == "org.freedesktop.Flatpak.update") {
+    if (action.id.indexOf("org.freedesktop.Flatpak.") === 0 &&
+        (action.id.indexOf("install") !== -1 ||
+         action.id.indexOf("uninstall") !== -1 ||
+         action.id.indexOf("update") !== -1)) {
         return polkit.Result.YES;
     }
 });

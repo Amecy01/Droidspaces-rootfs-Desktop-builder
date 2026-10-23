@@ -101,7 +101,7 @@ jobs:
           {
             dd if="$tmp/config.tar" bs=512 count="$blocks" status=none
             cat rootfs.tar
-          } | xz -T0 -9 -c > "$OUT"
+          } | xz -T0 -6 -c > "$OUT"
           sha256sum "$OUT" | tee SHA256SUMS.txt
 
       - name: 上传 artifact
