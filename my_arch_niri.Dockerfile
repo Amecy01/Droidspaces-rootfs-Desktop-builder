@@ -7,6 +7,7 @@ ARG PASSWORD=0000
 ARG ANLAND_RELEASE_REPOSITORY=Goldzxcbug/droidspaces-package
 ARG ANLAND_PACKAGE_REVISION=unknown
 ARG ENABLE_dux=false
+ARG ENABLE_APPEARANCE=false
 ######################################################
 
 # 复制全部所需脚本（niri profile 用自定义的 my_niri.sh）
@@ -18,6 +19,7 @@ COPY scripts/etc/wireplumber/wireplumber.conf.d/Anland-Audio.conf /tmp/Anland-Au
 COPY scripts/install-usb-manager.sh /usr/local/sbin/install-droidspaces-usb-manager
 COPY scripts/start-desktop-session.sh /usr/local/bin/start-desktop-session
 COPY font/ /tmp/font/
+COPY appearance/ /usr/share/droidspaces-appearance/
 
 # 安装声音配置文件
 RUN install -D -m 0644 /tmp/Anland-Audio.conf /etc/wireplumber/wireplumber.conf.d/Anland-Audio.conf && \
@@ -59,6 +61,10 @@ RUN pacman -S --noconfirm --needed \
         imagemagick chafa bat trash-cli \
         mpv imv zathura zathura-pdf-poppler
 
+# DMS doctor 的前五项依赖
+RUN pacman -S --noconfirm --needed \
+        power-profiles-daemon cups-pk-helper kimageformats cava
+
 # ble.sh（系统级安装到 /usr/share/blesh）
 RUN set -eux; \
     git clone --depth 1 --recursive https://github.com/akinomyoga/ble.sh.git /tmp/ble.sh; \
@@ -68,6 +74,23 @@ RUN set -eux; \
 
 # niri 的周边组件（profile 自带 install 参数）
 RUN /usr/local/lib/droidspaces/desktops/niri.sh install
+
+# niri 没有专属 portal backend，Settings/文件选择走 gtk
+RUN install -d -m 0755 /etc/xdg-desktop-portal && \
+    cat > /etc/xdg-desktop-portal/portals.conf <<'EOF'
+[preferred]
+org.freedesktop.impl.portal.Settings=gtk
+org.freedesktop.impl.portal.FileChooser=gtk
+org.freedesktop.impl.portal.OpenURI=gtk
+EOF
+RUN cp /etc/xdg-desktop-portal/portals.conf /etc/xdg-desktop-portal/niri-portals.conf
+
+# 保证 niri 会话里的 D-Bus 地址可用（portal 依赖 session bus）
+RUN cat > /etc/profile.d/dbus-session.sh <<'EOF'
+if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -n "${XDG_RUNTIME_DIR:-}" ]; then
+    export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+fi
+EOF
 
 # 字体：font/ 里的 ttf/otf 放到系统字体目录，fonts.conf 放到 local.conf
 RUN set -eux; \
@@ -229,6 +252,13 @@ EOF
 
     chown -R "${USERNAME}:${USERNAME}" "/home/${USERNAME}/.config"
 
+    install -d -m 0755 "/home/${USERNAME}/.config/systemd/user/sockets.target.wants"
+    if [ -f /usr/lib/systemd/user/dbus.socket ]; then
+        ln -sf /usr/lib/systemd/user/dbus.socket \
+            "/home/${USERNAME}/.config/systemd/user/sockets.target.wants/dbus.socket"
+    fi
+    chown -R "${USERNAME}:${USERNAME}" "/home/${USERNAME}/.config/systemd"
+
     /usr/local/sbin/configure-desktop "niri" "anland-wayland" "true" "${USERNAME}"
     rm -rf /tmp/droidspaces-start
 EOF_RUN
@@ -368,6 +398,24 @@ RUN pacman -Sy --noconfirm && \
 # yay / paru 直接从 CN 仓库装（有 aarch64 预编译包）
 RUN pacman -S --noconfirm --needed base-devel yay paru
 
+# DMS 动态主题需要 matugen：CN 有就 pacman，没有就走 AUR
+RUN set -eux; \
+    trap 'rm -f /etc/sudoers.d/90-build' EXIT; \
+    if pacman -Si matugen >/dev/null 2>&1; then \
+        pacman -S --needed --noconfirm matugen; \
+    else \
+        printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/90-build; \
+        chmod 0440 /etc/sudoers.d/90-build; \
+        runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
+            yay -S --needed --noconfirm matugen \
+            || runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
+                paru -S --needed --noconfirm matugen \
+            || runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
+                yay -S --needed --noconfirm matugen-bin; \
+        rm -f /etc/sudoers.d/90-build; \
+    fi; \
+    command -v matugen
+
 # Brave Origin：官方脚本以普通用户运行；失败或没装上再回退 yay/paru
 RUN set -eux; \
     trap 'rm -f /etc/sudoers.d/90-build' EXIT; \
@@ -460,6 +508,13 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
         || runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" DMS_PRIVESC=sudo \
             timeout 180 dms setup headless --compositor niri --terminal alacritty --no-systemd; \
         rm -rf /tmp/dux; \
+    fi
+
+# 可选：最小外观补丁（niri 布局/动画/blur + Matugen + GTK + fuzzel/alacritty）
+RUN if [ "$ENABLE_APPEARANCE" = "true" ]; then \
+        pacman -S --needed --noconfirm adw-gtk3 btop; \
+        chmod +x /usr/share/droidspaces-appearance/install.sh; \
+        /usr/share/droidspaces-appearance/install.sh "$USERNAME"; \
     fi
 
 # 成品源：保留你原来的 ALARM 镜像列表

@@ -1,0 +1,12 @@
+// 最小 DMS/Niri 键位：只使用镜像里确定存在的命令
+binds {
+    Mod+Return { spawn "alacritty"; }
+    Mod+T { spawn "alacritty"; }
+    Mod+E { spawn "alacritty" "-e" "yazi"; }
+    Mod+Z { spawn "dms" "ipc" "call" "spotlight" "toggle"; }
+    Mod+F2 { spawn "dms" "ipc" "call" "settings" "focusOrToggle"; }
+    Mod+Q { close-window; }
+    Mod+O { toggle-overview; }
+    Mod+G { toggle-overview; }
+    Mod+F { maximize-column; }
+}

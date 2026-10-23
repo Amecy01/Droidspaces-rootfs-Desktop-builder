@@ -1,0 +1,4 @@
+// 只在没有现成 niri 配置时使用
+include optional=true "appearance.kdl"
+
+prefer-no-csd

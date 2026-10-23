@@ -29,6 +29,11 @@ on:
         required: true
         type: boolean
         default: false
+      enable_appearance:
+        description: 套用最小外观（niri 布局/动画/blur + Matugen + GTK）
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -51,6 +56,7 @@ jobs:
           test -f my_arch_niri.Dockerfile || { echo "仓库根目录缺少 my_arch_niri.Dockerfile"; exit 1; }
           test -f my_niri.sh || { echo "仓库根目录缺少 my_niri.sh"; exit 1; }
           test -d font || { echo "仓库根目录缺少 font/"; exit 1; }
+          test -d appearance || { echo "仓库根目录缺少 appearance/"; exit 1; }
           test -d scripts || { echo "仓库根目录缺少 scripts/"; exit 1; }
           test -f scripts/desktops/niri.sh
           test -f scripts/tui/install-anland-niri.sh
@@ -69,6 +75,7 @@ jobs:
             --build-arg ANLAND_RELEASE_REPOSITORY="${{ inputs.anland_repository }}" \
             --build-arg ANLAND_PACKAGE_REVISION=unknown \
             --build-arg ENABLE_dux="${{ inputs.enable_dux }}" \
+            --build-arg ENABLE_APPEARANCE="${{ inputs.enable_appearance }}" \
             -f my_arch_niri.Dockerfile \
             .
 
@@ -82,7 +89,8 @@ jobs:
             'enable_x11=0' \
             'enable_pulseaudio=0' \
             'enable_gpu_mode=1' \
-            'enable_hw_access=1' \
+            'enable_hw_access=0' \
+            'allow_sandboxing=1' \
             'use_sparse_image=0' \
             > "$tmp/container.config"
           tar --format=ustar --owner=0 --group=0 --numeric-owner \

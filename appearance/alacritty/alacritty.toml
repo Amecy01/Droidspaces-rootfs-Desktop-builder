@@ -1,0 +1,7 @@
+[general]
+# 配色由 Matugen 生成到 ~/.config/alacritty/colors.toml 后再启用
+# import = ["~/.config/alacritty/colors.toml"]
+
+[window]
+padding = { x = 12, y = 12 }
+opacity = 0.92
