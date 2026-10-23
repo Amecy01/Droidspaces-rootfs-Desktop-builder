@@ -20,7 +20,7 @@ COPY scripts/start-desktop-session.sh /usr/local/bin/start-desktop-session
 COPY aur-audit.sh /usr/local/bin/aur-audit
 COPY aur-review.sh /usr/local/bin/aur-review
 COPY font/ /tmp/font/
-COPY dms-extras/wallpapers/ /usr/share/droidspaces-wallpapers/
+COPY dms-extras/ /usr/share/droidspaces-dms/
 
 # 安装声音配置文件
 RUN install -D -m 0644 /tmp/Anland-Audio.conf /etc/wireplumber/wireplumber.conf.d/Anland-Audio.conf && \
@@ -659,18 +659,22 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
         chown "$USERNAME:$USERNAME" "$SETTINGS"; \
     fi
 
-# DMS 附加：starship 提示符 + 壁纸（不再单独提供外观选项）
+# DMS 附加：starship 主题提示符 + 壁纸（不再单独提供外观选项）
 RUN if [ "$ENABLE_dux" = "true" ]; then \
         set -eux; \
         pacman -S --needed --noconfirm starship || true; \
-        install -d "/home/$USERNAME/Pictures/Wallpapers"; \
-        cp /usr/share/droidspaces-wallpapers/* "/home/$USERNAME/Pictures/Wallpapers/"; \
+        install -d "/home/$USERNAME/Pictures/Wallpapers" \
+            "/home/$USERNAME/.config"; \
+        cp /usr/share/droidspaces-dms/wallpapers/* "/home/$USERNAME/Pictures/Wallpapers/"; \
+        install -Dm644 /usr/share/droidspaces-dms/starship/starship.toml \
+            "/home/$USERNAME/.config/starship.toml"; \
         if command -v starship >/dev/null 2>&1 && \
            ! grep -q 'starship init bash' "/home/$USERNAME/.bashrc"; then \
             printf '\n# starship prompt\neval "$(starship init bash)"\n' >> "/home/$USERNAME/.bashrc"; \
         fi; \
         chown -R "$USERNAME:$USERNAME" \
             "/home/$USERNAME/Pictures" \
+            "/home/$USERNAME/.config/starship.toml" \
             "/home/$USERNAME/.bashrc"; \
     fi
 
@@ -695,7 +699,7 @@ RUN rm -f \
         /usr/local/bin/dstui \
         /var/log/pacman.log && \
     rm -rf /usr/local/lib/droidspaces/desktops \
-        /usr/share/droidspaces-wallpapers \
+        /usr/share/droidspaces-dms \
         /var/cache/pacman/pkg/* \
         /var/lib/pacman/sync/* \
         /tmp/* \
