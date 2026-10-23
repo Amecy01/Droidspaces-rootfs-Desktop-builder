@@ -37,7 +37,7 @@ done
 NIRI_CONFIG="$HOME_DIR/.config/niri/config.kdl"
 if [[ ! -f "$NIRI_CONFIG" ]]; then
     install -Dm644 "$SRC/niri/config.kdl" "$NIRI_CONFIG"
-elif ! grep -q 'include optional=true "appearance.kdl"' "$NIRI_CONFIG"; then
+elif ! grep -qE 'include[[:space:]].*appearance\.kdl' "$NIRI_CONFIG"; then
     printf '\ninclude optional=true "appearance.kdl"\n' >> "$NIRI_CONFIG"
 fi
 
