@@ -38,16 +38,25 @@ trap 'rm -rf "$tmp"' EXIT
 echo "${CYA}==> 查询 AUR: ${PKG}${RESET}"
 rpc="$(curl -fsS --max-time 10 --get --data-urlencode "arg[]=${PKG}" \
     https://aur.archlinux.org/rpc/v5/info 2>/dev/null || true)"
-base="$PKG"
-if [[ -n "$rpc" ]] && jq -e '.results[0]' >/dev/null 2>&1 <<<"$rpc"; then
-    base="$(jq -r '.results[0].PackageBase // empty' <<<"$rpc")"
-    [[ -n "$base" ]] || base="$PKG"
-    echo "维护者: $(jq -r '.results[0].Maintainer // "orphan"' <<<"$rpc")"
-    echo "票数:   $(jq -r '.results[0].NumVotes // 0' <<<"$rpc")"
-    echo "过期:   $(jq -r '.results[0].OutOfDate // "no"' <<<"$rpc")"
-else
-    echo "${YEL}警告: AUR RPC 无结果或不可用，按包名直接 clone。${RESET}"
+if [[ -z "$rpc" ]]; then
+    echo "AUR RPC 不可用，无法确认这是 AUR 包；已中止。" >&2
+    exit 1
 fi
+if ! jq -e '.results[0]' >/dev/null 2>&1 <<<"$rpc"; then
+    echo "AUR 没有这个包：${PKG}" >&2
+    echo "它可能是官方仓库、第三方仓库或名字写错；aur-review 只审 AUR。" >&2
+    exit 1
+fi
+
+base="$(jq -r '.results[0].PackageBase // empty' <<<"$rpc")"
+[[ -n "$base" ]] || base="$PKG"
+if [[ ! "$base" =~ ^[A-Za-z0-9@._+-]+$ ]]; then
+    echo "AUR 返回了异常的 PackageBase：${base}" >&2
+    exit 1
+fi
+echo "维护者: $(jq -r '.results[0].Maintainer // "orphan"' <<<"$rpc")"
+echo "票数:   $(jq -r '.results[0].NumVotes // 0' <<<"$rpc")"
+echo "过期:   $(jq -r '.results[0].OutOfDate // "no"' <<<"$rpc")"
 
 echo
 echo "${CYA}==> 下载 PKGBUILD（不执行）${RESET}"
@@ -66,8 +75,8 @@ flag() { score=$((score + $1)); printf '  %s%s%s\n' "$YEL" "$2" "$RESET"; }
 # 先看架构，避免 makepkg 到最后才报 “不支持 aarch64”
 srcinfo="$tmp/$base/.SRCINFO"
 if [[ -f "$srcinfo" ]]; then
-    arch_line="$(grep -E '^[[:space:]]*arch[[:space:]]*=' "$srcinfo" | head -1 || true)"
-    echo "架构:   ${arch_line#*=}"
+    arch_line="$(grep -E '^[[:space:]]*arch[[:space:]]*=' "$srcinfo" | sed 's/^[^=]*=[[:space:]]*//' | paste -sd, - || true)"
+    echo "架构:   ${arch_line:-unknown}"
     if ! grep -qE '^[[:space:]]*arch[[:space:]]*=.*(any|aarch64|arm64)' "$srcinfo"; then
         flag 10 "PKGBUILD 的 arch 不包含 aarch64/any，ARM64 上无法构建"
     fi
@@ -76,8 +85,8 @@ if [[ -f "$srcinfo" ]]; then
         flag 4 "只有 x86_64 的 source，没有 aarch64/arm64 source"
     fi
 else
-    arch_line="$(grep -E '^[[:space:]]*arch[[:space:]]*=' "$pkgbuild" | head -1 || true)"
-    echo "架构:   ${arch_line#*=}"
+    arch_line="$(grep -E '^[[:space:]]*arch[[:space:]]*=' "$pkgbuild" | sed 's/^[^=]*=[[:space:]]*//' | paste -sd, - || true)"
+    echo "架构:   ${arch_line:-unknown}"
     if ! grep -qE '^[[:space:]]*arch[[:space:]]*=.*(any|aarch64|arm64)' "$pkgbuild"; then
         flag 10 "PKGBUILD 的 arch 不包含 aarch64/any，ARM64 上无法构建"
     fi
@@ -108,7 +117,7 @@ fi
 if grep -qE "SKIP" "$pkgbuild"; then
     flag 3 "校验和含 SKIP"
 fi
-if grep -qE '^source.*(http://|ftp://)' "$pkgbuild"; then
+if grep -qE '^[[:space:]]*source.*(http://|ftp://)' "$pkgbuild"; then
     flag 2 "source 使用明文 HTTP/FTP"
 fi
 if grep -qiE '(^|[[:space:]])rm[[:space:]]+-rf[[:space:]]+/' "$pkgbuild"; then

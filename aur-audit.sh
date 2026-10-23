@@ -29,7 +29,7 @@ CANDIDATES=("${FOREIGN[@]}")
 
 # 批量查询 AUR RPC，只有 AUR 返回结果的包才进入审计。
 declare -A AUR_VERSION AUR_VOTES AUR_MAINT AUR_OUTOF AUR_BASE
-CHUNK=50
+CHUNK=100
 for ((i = 0; i < ${#CANDIDATES[@]}; i += CHUNK)); do
     args=()
     for pkg in "${CANDIDATES[@]:i:CHUNK}"; do
