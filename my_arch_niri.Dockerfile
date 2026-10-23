@@ -237,6 +237,14 @@ RUN for pam_file in /etc/pam.d/su /etc/pam.d/su-l; do \
     grep -qE '^[[:space:]]*session[[:space:]].*pam_env\.so' /etc/pam.d/su-l || \
         echo 'session        required        pam_env.so' >> /etc/pam.d/su-l
 
+# swaylock 的 PAM 服务；没有它时锁屏可能没有任何密码输入反馈
+RUN cat > /etc/pam.d/swaylock <<'EOF'
+auth       include      system-login
+account    include      system-login
+password   include      system-login
+session    include      system-login
+EOF
+
 # 初始化环境变量文件；桌面专属变量由 profile 管理
 RUN : > /etc/environment
 
