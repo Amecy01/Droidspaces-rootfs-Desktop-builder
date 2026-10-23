@@ -47,6 +47,18 @@ install -Dm644 "$SRC/gtk-3.0/settings.ini" "$HOME_DIR/.config/gtk-3.0/settings.i
 install -Dm644 "$SRC/gtk-3.0/gtk.css" "$HOME_DIR/.config/gtk-3.0/gtk.css"
 install -Dm644 "$SRC/gtk-4.0/settings.ini" "$HOME_DIR/.config/gtk-4.0/settings.ini"
 install -Dm644 "$SRC/gtk-4.0/gtk.css" "$HOME_DIR/.config/gtk-4.0/gtk.css"
+
+# adw-gtk3 在 ALARM 仓库可能不存在；退回到系统自带的 Adwaita-dark
+GTK_THEME="adw-gtk3-dark"
+if [[ ! -d "/usr/share/themes/${GTK_THEME}" ]]; then
+    if [[ -d /usr/share/themes/Adwaita-dark ]]; then
+        GTK_THEME="Adwaita-dark"
+    fi
+fi
+sed -i "s/^gtk-theme-name=.*/gtk-theme-name=${GTK_THEME}/" \
+    "$HOME_DIR/.config/gtk-3.0/settings.ini" \
+    "$HOME_DIR/.config/gtk-4.0/settings.ini"
+
 touch "$HOME_DIR/.config/gtk-3.0/dank-colors.css"
 touch "$HOME_DIR/.config/gtk-4.0/dank-colors.css"
 

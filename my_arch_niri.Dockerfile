@@ -638,7 +638,20 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
 
 # 可选：最小外观补丁（niri 布局/动画/blur + Matugen + GTK + fuzzel/alacritty）
 RUN if [ "$ENABLE_APPEARANCE" = "true" ]; then \
-        pacman -S --needed --noconfirm adw-gtk3 btop starship; \
+        set -eux; \
+        for p in adw-gtk3 btop starship gnome-themes-extra; do \
+            pacman -S --needed --noconfirm "$p" || true; \
+        done; \
+        if ! pacman -Q adw-gtk3 >/dev/null 2>&1; then \
+            printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/90-build; \
+            chmod 0440 /etc/sudoers.d/90-build; \
+            runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
+                yay -S --needed --noconfirm adw-gtk3 \
+                || runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
+                    yay -S --needed --noconfirm adw-gtk3-git \
+                || true; \
+            rm -f /etc/sudoers.d/90-build; \
+        fi; \
         chmod +x /usr/share/droidspaces-appearance/install.sh; \
         /usr/share/droidspaces-appearance/install.sh "$USERNAME"; \
     fi
