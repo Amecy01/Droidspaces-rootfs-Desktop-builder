@@ -683,7 +683,7 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
         fi; \
         chown -R "$USERNAME:$USERNAME" \
             "/home/$USERNAME/Pictures" \
-            "/home/$USERNAME/.config/starship.toml" \
+            "/home/$USERNAME/.config" \
             "/home/$USERNAME/.bashrc"; \
     fi
 
