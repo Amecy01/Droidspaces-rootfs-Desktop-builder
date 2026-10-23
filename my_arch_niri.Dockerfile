@@ -108,7 +108,8 @@ done
 [ -n "${WAYLAND_DISPLAY:-}" ] || exit 0
 
 dbus-update-activation-environment --systemd \
-    WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=niri XDG_SESSION_TYPE=wayland XDG_SESSION_DESKTOP=niri
+    WAYLAND_DISPLAY XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS \
+    XDG_CURRENT_DESKTOP=niri XDG_SESSION_TYPE=wayland XDG_SESSION_DESKTOP=niri
 
 systemctl --user reset-failed xdg-desktop-portal.service xdg-desktop-portal-gtk.service 2>/dev/null || true
 systemctl --user restart xdg-desktop-portal.service xdg-desktop-portal-gtk.service 2>/dev/null || true
