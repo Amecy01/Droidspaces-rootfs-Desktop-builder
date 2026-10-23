@@ -53,6 +53,8 @@ GTK_THEME="adw-gtk3-dark"
 if [[ ! -d "/usr/share/themes/${GTK_THEME}" ]]; then
     if [[ -d /usr/share/themes/Adwaita-dark ]]; then
         GTK_THEME="Adwaita-dark"
+    else
+        GTK_THEME="Adwaita"
     fi
 fi
 sed -i "s/^gtk-theme-name=.*/gtk-theme-name=${GTK_THEME}/" \
