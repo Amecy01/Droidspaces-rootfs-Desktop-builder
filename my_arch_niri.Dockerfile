@@ -129,9 +129,6 @@ fi
 dbus-update-activation-environment --systemd \
     WAYLAND_DISPLAY XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS \
     XDG_CURRENT_DESKTOP=niri XDG_SESSION_TYPE=wayland XDG_SESSION_DESKTOP=niri \
-    "QT_QPA_PLATFORM=wayland;xcb" \
-    "GDK_BACKEND=wayland,x11" \
-    "ELECTRON_OZONE_PLATFORM_HINT=auto" \
     ${DISPLAY:+DISPLAY}
 
 systemctl --user reset-failed xdg-desktop-portal.service xdg-desktop-portal-gtk.service 2>/dev/null || true
@@ -276,9 +273,7 @@ RUN echo 'MESA_LOADER_DRIVER_OVERRIDE=kgsl' >> /etc/environment && \
     echo 'FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1' >> /etc/environment && \
     echo 'EDITOR=vim' >> /etc/environment && \
     echo 'VISUAL=vim' >> /etc/environment && \
-    echo 'TERMINAL=alacritty' >> /etc/environment && \
-    echo 'MOZ_ENABLE_WAYLAND=1' >> /etc/environment && \
-    echo 'ELECTRON_OZONE_PLATFORM_HINT=auto' >> /etc/environment
+    echo 'TERMINAL=alacritty' >> /etc/environment
 
 # 输入法自启、会话环境、桌面配置
 COPY scripts/start/ /tmp/droidspaces-start/
