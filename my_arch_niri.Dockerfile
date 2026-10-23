@@ -658,10 +658,10 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
 # 可选：最小外观补丁（niri 布局/动画/blur + Matugen + GTK + fuzzel/alacritty）
 RUN if [ "$ENABLE_APPEARANCE" = "true" ]; then \
         set -eux; \
-        for p in adw-gtk3 btop starship gnome-themes-extra; do \
+        for p in adw-gtk-theme adw-gtk3 btop starship gnome-themes-extra; do \
             pacman -S --needed --noconfirm "$p" || true; \
         done; \
-        if ! pacman -Q adw-gtk3 >/dev/null 2>&1; then \
+        if [ ! -d /usr/share/themes/adw-gtk3-dark ] && [ ! -d /usr/share/themes/adw-gtk3 ]; then \
             printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/90-build; \
             chmod 0440 /etc/sudoers.d/90-build; \
             runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
