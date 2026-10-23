@@ -137,7 +137,6 @@ RUN mkdir -p /etc/systemd/user/default.target.wants && \
     cat > /etc/systemd/user/droidspaces-session-env.service <<'EOF'
 [Unit]
 Description=Sync Wayland environment for xdg-desktop-portal
-After=default.target
 
 [Service]
 Type=oneshot
@@ -208,6 +207,23 @@ RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
     useradd -m -s /bin/bash "${USERNAME}" && \
     printf '%s:%s\n' "${USERNAME}" "${PASSWORD}" | chpasswd && \
     systemctl enable sshd
+
+# Flatpak 全局“最小宽容”：托盘、Wayland/X11、GPU、音频、输入法、字体、GTK 配置
+RUN runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
+    flatpak override --user \
+        --socket=wayland \
+        --socket=fallback-x11 \
+        --socket=pulseaudio \
+        --device=dri \
+        --filesystem=xdg-run/fcitx5 \
+        --filesystem=xdg-data/fonts:ro \
+        --filesystem=/usr/local/share/fonts:ro \
+        --filesystem=xdg-config/gtk-3.0:ro \
+        --filesystem=xdg-config/gtk-4.0:ro \
+        --talk-name=org.kde.StatusNotifierWatcher \
+        --env=GTK_IM_MODULE=fcitx \
+        --env=QT_IM_MODULE=fcitx \
+        --env=XMODIFIERS=@im=fcitx
 
 # Droidspaces USB Manager
 RUN /usr/local/sbin/install-droidspaces-usb-manager --user "${USERNAME}"
@@ -636,6 +652,7 @@ RUN rm -f \
         /usr/local/bin/dstui \
         /var/log/pacman.log && \
     rm -rf /usr/local/lib/droidspaces/desktops \
+        /usr/share/droidspaces-appearance \
         /var/cache/pacman/pkg/* \
         /var/lib/pacman/sync/* \
         /tmp/* \
