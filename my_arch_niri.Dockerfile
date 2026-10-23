@@ -234,6 +234,7 @@ RUN install -d -o "$USERNAME" -g "$USERNAME" "/home/$USERNAME/.local/share/fonts
     chown -R "$USERNAME:$USERNAME" "/home/$USERNAME/.local/share/fonts"
 
 # Flatpak 全局“最小宽容”：托盘、Wayland/X11、GPU、音频、输入法、字体、GTK 配置
+# 本机 Flatpak runtime 没有 Anland/kgsl Mesa，GTK4 统一走 Cairo，避免 GSK/EGL 崩溃
 RUN runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
     flatpak override --user \
         --socket=wayland \
@@ -245,6 +246,7 @@ RUN runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
         --filesystem=xdg-config/gtk-3.0:ro \
         --filesystem=xdg-config/gtk-4.0:ro \
         --talk-name=org.kde.StatusNotifierWatcher \
+        --env=GSK_RENDERER=cairo \
         --env=GTK_IM_MODULE=fcitx \
         --env=QT_IM_MODULE=fcitx \
         --env=XMODIFIERS=@im=fcitx
