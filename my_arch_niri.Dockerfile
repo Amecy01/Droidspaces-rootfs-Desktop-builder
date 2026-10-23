@@ -120,6 +120,16 @@ systemctl --user restart xdg-desktop-portal.service xdg-desktop-portal-gtk.servi
 if command -v fcitx5 >/dev/null 2>&1; then
     fcitx5 -d >/dev/null 2>&1 || true
 fi
+
+# 启动即锁屏：有 DMS 时由 DMS 的 lockAtStartup 处理；没有 DMS 才用 swaylock
+if command -v dms >/dev/null 2>&1; then
+    :
+elif command -v swaylock >/dev/null 2>&1; then
+    setsid swaylock -f -c 000000 --indicator \
+        --ring-color 89b4fa --key-hl-color a6e3a1 \
+        --inside-color 00000000 --show-failed-attempts \
+        >/dev/null 2>&1 &
+fi
 EOF
 RUN chmod 0755 /usr/local/bin/droidspaces-session-env
 
@@ -131,6 +141,7 @@ After=default.target
 
 [Service]
 Type=oneshot
+KillMode=process
 ExecStart=/usr/local/bin/droidspaces-session-env
 
 [Install]
@@ -582,6 +593,19 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
         || runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" DMS_PRIVESC=sudo \
             timeout 180 dms setup headless --compositor niri --terminal alacritty --no-systemd; \
         rm -rf /tmp/dux; \
+    fi
+
+# 启用 DMS 时让它启动即锁屏（DMS 的 Lock.qml 检查 lockAtStartup）
+RUN if [ "$ENABLE_dux" = "true" ]; then \
+        SETTINGS="/home/$USERNAME/.config/dms/settings.json"; \
+        install -d -o "$USERNAME" -g "$USERNAME" "/home/$USERNAME/.config/dms"; \
+        if [ -f "$SETTINGS" ]; then \
+            jq '.lockAtStartup = true' "$SETTINGS" > "$SETTINGS.tmp" && \
+                mv "$SETTINGS.tmp" "$SETTINGS"; \
+        else \
+            printf '{"lockAtStartup": true}\n' > "$SETTINGS"; \
+        fi; \
+        chown "$USERNAME:$USERNAME" "$SETTINGS"; \
     fi
 
 # 可选：最小外观补丁（niri 布局/动画/blur + Matugen + GTK + fuzzel/alacritty）
