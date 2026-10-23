@@ -61,9 +61,11 @@ RUN pacman -S --noconfirm --needed \
         imagemagick chafa bat trash-cli \
         mpv imv zathura zathura-pdf-poppler
 
-# DMS doctor 的前五项依赖
-RUN pacman -S --noconfirm --needed \
-        power-profiles-daemon cups-pk-helper kimageformats cava
+# DMS doctor 的前五项依赖（只在启用 DMS 时安装）
+RUN if [ "$ENABLE_dux" = "true" ]; then \
+        pacman -S --noconfirm --needed \
+            power-profiles-daemon cups-pk-helper kimageformats cava; \
+    fi
 
 # ble.sh（系统级安装到 /usr/share/blesh）
 RUN set -eux; \
@@ -450,23 +452,26 @@ RUN pacman -Sy --noconfirm && \
 # yay / paru 直接从 CN 仓库装（有 aarch64 预编译包）
 RUN pacman -S --noconfirm --needed base-devel yay paru
 
-# DMS 动态主题需要 matugen：CN 有就 pacman，没有就走 AUR
-RUN set -eux; \
-    trap 'rm -f /etc/sudoers.d/90-build' EXIT; \
-    if pacman -Si matugen >/dev/null 2>&1; then \
-        pacman -S --needed --noconfirm matugen; \
-    else \
-        printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/90-build; \
-        chmod 0440 /etc/sudoers.d/90-build; \
-        runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
-            yay -S --needed --noconfirm matugen \
-            || runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
-                paru -S --needed --noconfirm matugen \
-            || runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
-                yay -S --needed --noconfirm matugen-bin; \
-        rm -f /etc/sudoers.d/90-build; \
-    fi; \
-    command -v matugen
+# DMS 动态主题需要 matugen；外观补丁的模板也用它。
+# 只在启用 DMS 或外观时安装，避免纯 niri 也被塞 AUR 构建。
+RUN if [ "$ENABLE_dux" = "true" ] || [ "$ENABLE_APPEARANCE" = "true" ]; then \
+        set -eux; \
+        trap 'rm -f /etc/sudoers.d/90-build' EXIT; \
+        if pacman -Si matugen >/dev/null 2>&1; then \
+            pacman -S --needed --noconfirm matugen; \
+        else \
+            printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/90-build; \
+            chmod 0440 /etc/sudoers.d/90-build; \
+            runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
+                yay -S --needed --noconfirm matugen \
+                || runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
+                    paru -S --needed --noconfirm matugen \
+                || runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
+                    yay -S --needed --noconfirm matugen-bin; \
+            rm -f /etc/sudoers.d/90-build; \
+        fi; \
+        command -v matugen; \
+    fi
 
 # Brave Origin：官方脚本以普通用户运行；失败或没装上再回退 yay/paru
 RUN set -eux; \
