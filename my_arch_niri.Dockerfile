@@ -465,6 +465,23 @@ RUN set -eux; \
         sed -i '/^\[options\]/a IgnorePkg = polkit' /etc/pacman.conf; \
     fi
 
+# DMS 右键卸载 Flatpak 调用的是 `flatpak uninstall -y --app <id>`（不带 sudo）。
+# 系统级 Flatpak 卸载会走 system-helper + polkit；这里只对 wheel 组放行
+# Flatpak 的安装/卸载/更新，避免每次都要认证弹窗。自用镜像可接受。
+RUN install -d -m 0755 /etc/polkit-1/rules.d && \
+    cat > /etc/polkit-1/rules.d/49-flatpak-wheel.rules <<'EOF'
+polkit.addRule(function(action, subject) {
+    if (!subject.isInGroup("wheel")) {
+        return null;
+    }
+    if (action.id == "org.freedesktop.Flatpak.app-install" ||
+        action.id == "org.freedesktop.Flatpak.app-uninstall" ||
+        action.id == "org.freedesktop.Flatpak.update") {
+        return polkit.Result.YES;
+    }
+});
+EOF
+
 # 可选：dux shell（full ARM 资产；先装 Quickshell + Qt6 依赖）
 RUN if [ "$ENABLE_dux" = "true" ]; then \
         set -eux; \
