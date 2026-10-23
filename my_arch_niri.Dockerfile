@@ -18,6 +18,7 @@ COPY scripts/tui/install-mesa.sh /usr/local/sbin/install-mesa
 COPY scripts/etc/wireplumber/wireplumber.conf.d/Anland-Audio.conf /tmp/Anland-Audio.conf
 COPY scripts/install-usb-manager.sh /usr/local/sbin/install-droidspaces-usb-manager
 COPY scripts/start-desktop-session.sh /usr/local/bin/start-desktop-session
+COPY aur-audit.sh /usr/local/bin/aur-audit
 COPY font/ /tmp/font/
 COPY appearance/ /usr/share/droidspaces-appearance/
 
@@ -32,6 +33,7 @@ RUN chmod +x \
         /usr/local/sbin/configure-desktop \
         /usr/local/sbin/install-droidspaces-usb-manager \
         /usr/local/bin/start-desktop-session \
+        /usr/local/bin/aur-audit \
         /usr/local/lib/droidspaces/desktops/niri.sh && \
     sed -i '/^#ParallelDownloads/s/^#//' /etc/pacman.conf && \
     sed -i '/NoExtract.*locale/d' /etc/pacman.conf && \
@@ -127,6 +129,9 @@ fi
 dbus-update-activation-environment --systemd \
     WAYLAND_DISPLAY XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS \
     XDG_CURRENT_DESKTOP=niri XDG_SESSION_TYPE=wayland XDG_SESSION_DESKTOP=niri \
+    "QT_QPA_PLATFORM=wayland;xcb" \
+    "GDK_BACKEND=wayland,x11" \
+    "ELECTRON_OZONE_PLATFORM_HINT=auto" \
     ${DISPLAY:+DISPLAY}
 
 systemctl --user reset-failed xdg-desktop-portal.service xdg-desktop-portal-gtk.service 2>/dev/null || true
