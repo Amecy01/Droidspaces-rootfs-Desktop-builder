@@ -544,6 +544,7 @@ RUN rm -f \
         /root/.cache \
         "/home/${USERNAME}/.cache" \
         /var/lib/systemd/random-seed && \
+    chown -R "$USERNAME:$USERNAME" "/home/$USERNAME" && \
     : > /etc/machine-id && \
     rm -f /etc/ssh/ssh_host_* && \
     test ! -e /etc/sudoers.d/90-build

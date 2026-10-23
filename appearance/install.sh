@@ -9,7 +9,7 @@ SRC="/usr/share/droidspaces-appearance"
 [[ ${EUID:-$(id -u)} -eq 0 ]] || { echo "需要 root" >&2; exit 1; }
 [[ -d "$HOME_DIR" ]] || { echo "用户目录不存在: $HOME_DIR" >&2; exit 1; }
 
-install -d -o "$USER_NAME" -g "$USER_NAME" \
+install -d \
     "$HOME_DIR/.config/niri/dms" \
     "$HOME_DIR/.config/gtk-3.0" \
     "$HOME_DIR/.config/gtk-4.0" \
@@ -17,11 +17,15 @@ install -d -o "$USER_NAME" -g "$USER_NAME" \
     "$HOME_DIR/.config/alacritty" \
     "$HOME_DIR/.config/matugen" \
     "$HOME_DIR/.local/share/fcitx5/themes/Matugen" \
+    "$HOME_DIR/.local/share/fcitx5/themes/dms" \
+    "$HOME_DIR/.local/share/color-schemes" \
+    "$HOME_DIR/.local/share/icons" \
     "$HOME_DIR/.config/btop/themes" \
     "$HOME_DIR/.config/cava/themes" \
     "$HOME_DIR/.config/yazi" \
     "$HOME_DIR/.config/fastfetch" \
     "$HOME_DIR/.cache/matugen" \
+    "$HOME_DIR/.cache/dms" \
     "$HOME_DIR/Pictures/Wallpapers"
 
 # niri 外观文件；不覆盖 DMS 自己生成的 dms/binds.kdl
@@ -52,22 +56,19 @@ install -Dm644 "$SRC/alacritty/alacritty.toml" "$HOME_DIR/.config/alacritty/alac
 
 # Matugen 配置与模板
 install -Dm644 "$SRC/matugen/config.toml" "$HOME_DIR/.config/matugen/config.toml"
+install -d "$HOME_DIR/.config/matugen/templates"
 cp -a "$SRC/matugen/templates/." "$HOME_DIR/.config/matugen/templates/"
 
 # 壁纸
 cp -a "$SRC/wallpapers/." "$HOME_DIR/Pictures/Wallpapers/"
 
+# 整体修正属主：.local 和 .cache 的父目录曾被 install -d 建成 root，
+# 导致 DMS 的 matugen 无法创建 color-schemes / fcitx5 themes。
 chown -R "$USER_NAME:$USER_NAME" \
-    "$HOME_DIR/.config/niri" \
-    "$HOME_DIR/.config/gtk-3.0" \
-    "$HOME_DIR/.config/gtk-4.0" \
-    "$HOME_DIR/.config/fuzzel" \
-    "$HOME_DIR/.config/alacritty" \
-    "$HOME_DIR/.config/matugen" \
-    "$HOME_DIR/.local/share/fcitx5/themes/Matugen" \
-    "$HOME_DIR/.config/btop" \
-    "$HOME_DIR/.config/cava" \
-    "$HOME_DIR/Pictures/Wallpapers"
+    "$HOME_DIR/.config" \
+    "$HOME_DIR/.local" \
+    "$HOME_DIR/.cache" \
+    "$HOME_DIR/Pictures"
 
 # 首次生成一套颜色；失败不阻断构建，进桌面后换壁纸会重新生成
 WALLPAPER="$HOME_DIR/Pictures/Wallpapers/wallhaven-d88d53.png"
