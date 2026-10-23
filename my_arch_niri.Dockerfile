@@ -113,6 +113,11 @@ dbus-update-activation-environment --systemd \
 
 systemctl --user reset-failed xdg-desktop-portal.service xdg-desktop-portal-gtk.service 2>/dev/null || true
 systemctl --user restart xdg-desktop-portal.service xdg-desktop-portal-gtk.service 2>/dev/null || true
+
+# niri 不会自动读 ~/.config/autostart，这里在 Wayland 环境就绪后拉起 fcitx5
+if command -v fcitx5 >/dev/null 2>&1; then
+    fcitx5 -d >/dev/null 2>&1 || true
+fi
 EOF
 RUN chmod 0755 /usr/local/bin/droidspaces-session-env
 
@@ -233,10 +238,10 @@ StartupNotify=false
 NoDisplay=true
 EOF
     cat <<'EOF' >> /etc/environment
-XMODIFIERS=@im=fcitx5
-GTK_IM_MODULE=fcitx5
-QT_IM_MODULE=fcitx5
-SDL_IM_MODULE=fcitx5
+XMODIFIERS=@im=fcitx
+GTK_IM_MODULE=fcitx
+QT_IM_MODULE=fcitx
+SDL_IM_MODULE=fcitx
 GLFW_IM_MODULE=fcitx
 EOF
 
