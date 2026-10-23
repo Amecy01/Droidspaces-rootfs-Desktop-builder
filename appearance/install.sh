@@ -70,6 +70,14 @@ chown -R "$USER_NAME:$USER_NAME" \
     "$HOME_DIR/.cache" \
     "$HOME_DIR/Pictures"
 
+# starship 提示符：模板由 Matugen 生成到 ~/.config/starship.toml
+if command -v starship >/dev/null 2>&1; then
+    if ! grep -q 'starship init bash' "$HOME_DIR/.bashrc"; then
+        printf '\n# starship prompt\neval "$(starship init bash)"\n' >> "$HOME_DIR/.bashrc"
+    fi
+    chown "$USER_NAME:$USER_NAME" "$HOME_DIR/.bashrc"
+fi
+
 # 首次生成一套颜色；失败不阻断构建，进桌面后换壁纸会重新生成
 WALLPAPER="$HOME_DIR/Pictures/Wallpapers/wallhaven-d88d53.png"
 if command -v matugen >/dev/null 2>&1 && [[ -f "$WALLPAPER" ]]; then

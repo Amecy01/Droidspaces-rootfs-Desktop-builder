@@ -85,6 +85,52 @@ org.freedesktop.impl.portal.OpenURI=gtk
 EOF
 RUN cp /etc/xdg-desktop-portal/portals.conf /etc/xdg-desktop-portal/niri-portals.conf
 
+# 全局会话环境同步：只依赖 niri/anland 的 Wayland socket，不依赖外观补丁。
+# xdg-desktop-portal-gtk 由 systemd --user 启动，默认没有 WAYLAND_DISPLAY。
+RUN cat > /usr/local/bin/droidspaces-session-env <<'EOF'
+#!/bin/sh
+set -eu
+
+export DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=${XDG_RUNTIME_DIR}/bus}"
+
+i=0
+while [ "$i" -lt 60 ]; do
+    for s in "$XDG_RUNTIME_DIR"/wayland-*; do
+        if [ -S "$s" ]; then
+            export WAYLAND_DISPLAY="${s##*/}"
+            break 2
+        fi
+    done
+    sleep 1
+    i=$((i + 1))
+done
+
+[ -n "${WAYLAND_DISPLAY:-}" ] || exit 0
+
+dbus-update-activation-environment --systemd \
+    WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=niri XDG_SESSION_TYPE=wayland XDG_SESSION_DESKTOP=niri
+
+systemctl --user reset-failed xdg-desktop-portal.service xdg-desktop-portal-gtk.service 2>/dev/null || true
+systemctl --user restart xdg-desktop-portal.service xdg-desktop-portal-gtk.service 2>/dev/null || true
+EOF
+RUN chmod 0755 /usr/local/bin/droidspaces-session-env
+
+RUN mkdir -p /etc/systemd/user/default.target.wants && \
+    cat > /etc/systemd/user/droidspaces-session-env.service <<'EOF'
+[Unit]
+Description=Sync Wayland environment for xdg-desktop-portal
+After=default.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/droidspaces-session-env
+
+[Install]
+WantedBy=default.target
+EOF
+RUN ln -sf /etc/systemd/user/droidspaces-session-env.service \
+        /etc/systemd/user/default.target.wants/droidspaces-session-env.service
+
 # 保证 niri 会话里的 D-Bus 地址可用（portal 依赖 session bus）
 RUN cat > /etc/profile.d/dbus-session.sh <<'EOF'
 if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -n "${XDG_RUNTIME_DIR:-}" ]; then
@@ -529,7 +575,7 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
 
 # 可选：最小外观补丁（niri 布局/动画/blur + Matugen + GTK + fuzzel/alacritty）
 RUN if [ "$ENABLE_APPEARANCE" = "true" ]; then \
-        pacman -S --needed --noconfirm adw-gtk3 btop; \
+        pacman -S --needed --noconfirm adw-gtk3 btop starship; \
         chmod +x /usr/share/droidspaces-appearance/install.sh; \
         /usr/share/droidspaces-appearance/install.sh "$USERNAME"; \
     fi

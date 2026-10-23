@@ -3,7 +3,3 @@ include optional=true "layout.kdl"
 include optional=true "animations.kdl"
 include optional=true "blur.kdl"
 
-// xdg-desktop-portal-gtk 由 systemd user 服务启动，默认拿不到 niri 的
-// WAYLAND_DISPLAY，会报 "cannot open display"。启动时把环境同步给
-// systemd/dbus，然后重启 portal，Settings portal 才可用。
-spawn-sh-at-startup "dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP=niri XDG_SESSION_TYPE=wayland && systemctl --user reset-failed xdg-desktop-portal.service xdg-desktop-portal-gtk.service 2>/dev/null; systemctl --user restart xdg-desktop-portal.service xdg-desktop-portal-gtk.service 2>/dev/null"
