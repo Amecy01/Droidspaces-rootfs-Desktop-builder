@@ -60,14 +60,35 @@ pkgbuild="$tmp/$base/PKGBUILD"
 [[ -f "$pkgbuild" ]] || { echo "没有 PKGBUILD" >&2; exit 1; }
 
 echo "目录: $tmp/$base"
+score=0
+flag() { score=$((score + $1)); printf '  %s%s%s\n' "$YEL" "$2" "$RESET"; }
+
+# 先看架构，避免 makepkg 到最后才报 “不支持 aarch64”
+srcinfo="$tmp/$base/.SRCINFO"
+if [[ -f "$srcinfo" ]]; then
+    arch_line="$(grep -E '^[[:space:]]*arch[[:space:]]*=' "$srcinfo" | head -1 || true)"
+    echo "架构:   ${arch_line#*=}"
+    if ! grep -qE '^[[:space:]]*arch[[:space:]]*=.*(any|aarch64|arm64)' "$srcinfo"; then
+        flag 10 "PKGBUILD 的 arch 不包含 aarch64/any，ARM64 上无法构建"
+    fi
+    if grep -qE '^[[:space:]]*source_x86_64' "$srcinfo" &&
+       ! grep -qE '^[[:space:]]*source_aarch64|^[[:space:]]*source_arm64' "$srcinfo"; then
+        flag 4 "只有 x86_64 的 source，没有 aarch64/arm64 source"
+    fi
+else
+    arch_line="$(grep -E '^[[:space:]]*arch[[:space:]]*=' "$pkgbuild" | head -1 || true)"
+    echo "架构:   ${arch_line#*=}"
+    if ! grep -qE '^[[:space:]]*arch[[:space:]]*=.*(any|aarch64|arm64)' "$pkgbuild"; then
+        flag 10 "PKGBUILD 的 arch 不包含 aarch64/any，ARM64 上无法构建"
+    fi
+fi
+
 echo
 echo "${CYA}==> source / 校验${RESET}"
 grep -nE '^[[:space:]]*(source|sha256sums|sha512sums|b2sums|md5sums)' "$pkgbuild" || true
 
 echo
 echo "${CYA}==> 风险模式${RESET}"
-score=0
-flag() { score=$((score + $1)); printf '  %s%s%s\n' "$YEL" "$2" "$RESET"; }
 
 if grep -qiE '(curl|wget)[^#]*\|[[:space:]]*(ba)?sh' "$pkgbuild"; then
     flag 6 "网络脚本直接执行: curl/wget | sh"
