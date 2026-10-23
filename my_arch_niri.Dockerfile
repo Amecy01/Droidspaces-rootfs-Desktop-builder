@@ -17,6 +17,7 @@ COPY scripts/tui/install-mesa.sh /usr/local/sbin/install-mesa
 COPY scripts/etc/wireplumber/wireplumber.conf.d/Anland-Audio.conf /tmp/Anland-Audio.conf
 COPY scripts/install-usb-manager.sh /usr/local/sbin/install-droidspaces-usb-manager
 COPY scripts/start-desktop-session.sh /usr/local/bin/start-desktop-session
+COPY droidspaces-input-nodes.sh /usr/local/bin/droidspaces-input-nodes
 COPY aur-audit.sh /usr/local/bin/aur-audit
 COPY aur-review.sh /usr/local/bin/aur-review
 COPY font/ /tmp/font/
@@ -33,6 +34,7 @@ RUN chmod +x \
         /usr/local/sbin/configure-desktop \
         /usr/local/sbin/install-droidspaces-usb-manager \
         /usr/local/bin/start-desktop-session \
+        /usr/local/bin/droidspaces-input-nodes \
         /usr/local/bin/aur-audit \
         /usr/local/bin/aur-review \
         /usr/local/lib/droidspaces/desktops/niri.sh && \
@@ -167,6 +169,27 @@ WantedBy=default.target
 EOF
 RUN ln -sf /etc/systemd/user/droidspaces-session-env.service \
         /etc/systemd/user/default.target.wants/droidspaces-session-env.service
+
+# Droidspaces 只 mirror GPU 节点，不 mirror Android ueventd 的 input 节点；
+# 在硬件访问开启时用 sysfs 补建 /dev/input/event*。
+RUN cat > /etc/systemd/system/droidspaces-input-nodes.service <<'EOF'
+[Unit]
+Description=Mirror Android input event nodes into /dev/input
+DefaultDependencies=no
+After=systemd-udevd.service
+Before=graphical.target
+ConditionPathIsReadWrite=/sys/devices
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/droidspaces-input-nodes
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+RUN ln -sf /etc/systemd/system/droidspaces-input-nodes.service \
+        /etc/systemd/system/multi-user.target.wants/droidspaces-input-nodes.service
 
 # 保证 niri 会话里的 D-Bus 地址可用（portal 依赖 session bus）
 RUN cat > /etc/profile.d/dbus-session.sh <<'EOF'
