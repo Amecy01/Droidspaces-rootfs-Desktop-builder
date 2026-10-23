@@ -15,6 +15,7 @@ configure_environment() {
     local -a assignments=(
         XDG_SESSION_CLASS=user
         XDG_SESSION_TYPE=wayland
+        "QT_QPA_PLATFORM=wayland;xcb"
         ANLAND=1
         ANLAND_PRESENT_BACKEND=legacy
         ANLAND_SOCKET=/run/display.sock
