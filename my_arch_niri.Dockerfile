@@ -109,9 +109,25 @@ done
 
 [ -n "${WAYLAND_DISPLAY:-}" ] || exit 0
 
+# 如果 niri 的 Xwayland 已经起来，补一个 DISPLAY，供 X11/XIM 程序使用
+if [ -z "${DISPLAY:-}" ] && [ -d /tmp/.X11-unix ]; then
+    i=0
+    while [ "$i" -lt 20 ]; do
+        for x in /tmp/.X11-unix/X*; do
+            if [ -S "$x" ]; then
+                export DISPLAY=":${x##*X}"
+                break 2
+            fi
+        done
+        sleep 1
+        i=$((i + 1))
+    done
+fi
+
 dbus-update-activation-environment --systemd \
     WAYLAND_DISPLAY XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS \
-    XDG_CURRENT_DESKTOP=niri XDG_SESSION_TYPE=wayland XDG_SESSION_DESKTOP=niri
+    XDG_CURRENT_DESKTOP=niri XDG_SESSION_TYPE=wayland XDG_SESSION_DESKTOP=niri \
+    ${DISPLAY:+DISPLAY}
 
 systemctl --user reset-failed xdg-desktop-portal.service xdg-desktop-portal-gtk.service 2>/dev/null || true
 systemctl --user restart xdg-desktop-portal.service xdg-desktop-portal-gtk.service 2>/dev/null || true
