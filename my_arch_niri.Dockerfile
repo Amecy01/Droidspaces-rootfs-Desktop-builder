@@ -467,9 +467,10 @@ for unit in systemd-udevd.service systemd-udev-trigger.service systemd-udev-sett
 done
 
 # socket：用 DS 在硬件访问时 pin 成 rw 的 /sys/devices 判断，避免 hw_access=0 时反复启动
+# 用 zz- 前缀，确保 DS 导入时的 post_extract_fixes.sh 写入 99-readonly-fix.conf 后仍然生效
 for unit in systemd-udevd-kernel.socket systemd-udevd-control.socket systemd-udevd-varlink.socket; do
     mkdir -p "/etc/systemd/system/${unit}.d"
-    printf "[Unit]\nConditionPathIsReadWrite=\nConditionPathIsReadWrite=/sys/devices\n" > "/etc/systemd/system/${unit}.d/99-readonly-fix.conf"
+    printf "[Unit]\nConditionPathIsReadWrite=\nConditionPathIsReadWrite=/sys/devices\n" > "/etc/systemd/system/${unit}.d/zz-droidspaces-socket.conf"
 done
 
 for unit in NetworkManager.service dhcpcd.service systemd-resolved.service systemd-networkd.service; do
