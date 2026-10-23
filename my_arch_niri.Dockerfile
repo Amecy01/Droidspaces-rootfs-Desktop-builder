@@ -19,6 +19,7 @@ COPY scripts/etc/wireplumber/wireplumber.conf.d/Anland-Audio.conf /tmp/Anland-Au
 COPY scripts/install-usb-manager.sh /usr/local/sbin/install-droidspaces-usb-manager
 COPY scripts/start-desktop-session.sh /usr/local/bin/start-desktop-session
 COPY aur-audit.sh /usr/local/bin/aur-audit
+COPY aur-review.sh /usr/local/bin/aur-review
 COPY font/ /tmp/font/
 COPY appearance/ /usr/share/droidspaces-appearance/
 
@@ -34,6 +35,7 @@ RUN chmod +x \
         /usr/local/sbin/install-droidspaces-usb-manager \
         /usr/local/bin/start-desktop-session \
         /usr/local/bin/aur-audit \
+        /usr/local/bin/aur-review \
         /usr/local/lib/droidspaces/desktops/niri.sh && \
     sed -i '/^#ParallelDownloads/s/^#//' /etc/pacman.conf && \
     sed -i '/NoExtract.*locale/d' /etc/pacman.conf && \
