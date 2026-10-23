@@ -30,18 +30,18 @@ $line_break$character"""
 palette = 'colors'
 
 [palettes.colors]
-mustard = '#af8700'
-color_orange = '#fab387'
-color_fg0 = '#1e1e2e'
-color_fg1 = '#cdd6f4'
-color_purple = '#cba6f7'
-color_bg3 = '#45475a'
-color_green = '#1e1e2e'
-color_bg1 = '#313244'
-color_blue = '#89b4fa'
-color_red = '#f38ba8'
-color_aqua = '#94e2d5'
-color_yellow = '#f9e2af'
+mustard = 'yellow'
+color_orange = 'bright-yellow'
+color_fg0 = 'black'
+color_fg1 = 'white'
+color_purple = 'bright-magenta'
+color_bg3 = 'bright-black'
+color_green = 'bright-green'
+color_bg1 = 'black'
+color_blue = 'bright-blue'
+color_red = 'bright-red'
+color_aqua = 'bright-cyan'
+color_yellow = 'yellow'
 
 [os]
 disabled = false
