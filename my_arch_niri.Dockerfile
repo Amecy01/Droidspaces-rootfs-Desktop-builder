@@ -228,6 +228,11 @@ RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
     printf '%s:%s\n' "${USERNAME}" "${PASSWORD}" | chpasswd && \
     systemctl enable sshd
 
+# Flatpak 不能通过 --filesystem 暴露 /usr；给用户目录复制一份字体
+RUN install -d -o "$USERNAME" -g "$USERNAME" "/home/$USERNAME/.local/share/fonts" && \
+    cp /usr/local/share/fonts/*.ttf "/home/$USERNAME/.local/share/fonts/" && \
+    chown -R "$USERNAME:$USERNAME" "/home/$USERNAME/.local/share/fonts"
+
 # Flatpak 全局“最小宽容”：托盘、Wayland/X11、GPU、音频、输入法、字体、GTK 配置
 RUN runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
     flatpak override --user \
@@ -237,7 +242,6 @@ RUN runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
         --device=dri \
         --filesystem=xdg-run/fcitx5 \
         --filesystem=xdg-data/fonts:ro \
-        --filesystem=/usr/local/share/fonts:ro \
         --filesystem=xdg-config/gtk-3.0:ro \
         --filesystem=xdg-config/gtk-4.0:ro \
         --talk-name=org.kde.StatusNotifierWatcher \

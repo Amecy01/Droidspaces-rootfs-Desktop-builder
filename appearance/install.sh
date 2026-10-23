@@ -70,6 +70,14 @@ touch "$HOME_DIR/.config/gtk-4.0/dank-colors.css"
 install -Dm644 "$SRC/fuzzel/fuzzel.ini" "$HOME_DIR/.config/fuzzel/fuzzel.ini"
 install -Dm644 "$SRC/alacritty/alacritty.toml" "$HOME_DIR/.config/alacritty/alacritty.toml"
 
+# DMS 会生成 dank-theme.toml；把导入打开，否则 Yazi 会用 Alacritty 默认配色
+ALACRITTY_CONFIG="$HOME_DIR/.config/alacritty/alacritty.toml"
+if [[ -f "$HOME_DIR/.config/alacritty/dank-theme.toml" ]]; then
+    sed -i 's|^# import = .*|import = ["~/.config/alacritty/dank-theme.toml"]|' "$ALACRITTY_CONFIG"
+elif [[ -f "$HOME_DIR/.config/alacritty/colors.toml" ]]; then
+    sed -i 's|^# import = .*|import = ["~/.config/alacritty/colors.toml"]|' "$ALACRITTY_CONFIG"
+fi
+
 # Matugen 配置与模板
 install -Dm644 "$SRC/matugen/config.toml" "$HOME_DIR/.config/matugen/config.toml"
 install -d "$HOME_DIR/.config/matugen/templates"
