@@ -658,7 +658,7 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
 # 可选：最小外观补丁（niri 布局/动画/blur + Matugen + GTK + fuzzel/alacritty）
 RUN if [ "$ENABLE_APPEARANCE" = "true" ]; then \
         set -eux; \
-        for p in adw-gtk-theme adw-gtk3 btop starship gnome-themes-extra; do \
+        for p in adw-gtk-theme btop starship gnome-themes-extra; do \
             pacman -S --needed --noconfirm "$p" || true; \
         done; \
         if [ ! -d /usr/share/themes/adw-gtk3-dark ] && [ ! -d /usr/share/themes/adw-gtk3 ]; then \
