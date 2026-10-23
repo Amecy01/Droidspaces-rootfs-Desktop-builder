@@ -460,10 +460,16 @@ ExecStart=
 ExecStart=-/usr/bin/udevadm trigger --subsystem-match=usb --subsystem-match=block --subsystem-match=input --subsystem-match=tty --subsystem-match=net
 EOF
 
-# 针对只读文件系统路径覆盖（官方方案）
-for unit in systemd-udevd.service systemd-udev-trigger.service systemd-udev-settle.service systemd-udevd-kernel.socket systemd-udevd-control.socket; do
+# 服务/trigger/settle：顶层 /sys 在硬件访问时也会被 DS 重挂为 ro，所以保留官方清空条件
+for unit in systemd-udevd.service systemd-udev-trigger.service systemd-udev-settle.service; do
     mkdir -p "/etc/systemd/system/${unit}.d"
     printf "[Unit]\nConditionPathIsReadWrite=\n" > "/etc/systemd/system/${unit}.d/99-readonly-fix.conf"
+done
+
+# socket：用 DS 在硬件访问时 pin 成 rw 的 /sys/devices 判断，避免 hw_access=0 时反复启动
+for unit in systemd-udevd-kernel.socket systemd-udevd-control.socket systemd-udevd-varlink.socket; do
+    mkdir -p "/etc/systemd/system/${unit}.d"
+    printf "[Unit]\nConditionPathIsReadWrite=\nConditionPathIsReadWrite=/sys/devices\n" > "/etc/systemd/system/${unit}.d/99-readonly-fix.conf"
 done
 
 for unit in NetworkManager.service dhcpcd.service systemd-resolved.service systemd-networkd.service; do
