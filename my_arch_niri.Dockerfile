@@ -635,7 +635,7 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
         rm -rf /tmp/dux; \
     fi
 
-# 启用 DMS 时让它启动即锁屏（DMS 的 Lock.qml 检查 lockAtStartup）
+# 关闭 DMS 启动自动锁屏，只保留手动锁屏（避免进入桌面时闪烁）
 RUN if [ "$ENABLE_dux" = "true" ]; then \
         set -e; \
         SETTINGS="/home/$USERNAME/.config/dms/settings.json"; \
