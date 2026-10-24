@@ -191,6 +191,13 @@ EOF
 RUN ln -sf /etc/systemd/system/droidspaces-input-nodes.service \
         /etc/systemd/system/multi-user.target.wants/droidspaces-input-nodes.service
 
+# USB/输入设备热插拔时也补建节点（服务本身只在开机跑一次）
+RUN install -d -m 0755 /etc/udev/rules.d && \
+    cat > /etc/udev/rules.d/99-droidspaces-dev-nodes.rules <<'EOF'
+ACTION=="add", SUBSYSTEM=="usb", RUN+="/usr/local/bin/droidspaces-input-nodes"
+ACTION=="add", SUBSYSTEM=="input", RUN+="/usr/local/bin/droidspaces-input-nodes"
+EOF
+
 # 保证 niri 会话里的 D-Bus 地址可用（portal 依赖 session bus）
 RUN cat > /etc/profile.d/dbus-session.sh <<'EOF'
 if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ] && [ -n "${XDG_RUNTIME_DIR:-}" ]; then
