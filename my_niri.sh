@@ -45,12 +45,12 @@ install_niri_arch() {
     # 必需组件
     pacman -S --noconfirm --needed \
         xdg-desktop-portal xdg-desktop-portal-gtk xdg-utils \
-        alacritty fuzzel mako waybar swaybg swaylock wl-clipboard \
+        alacritty wl-clipboard \
         brightnessctl playerctl \
         pipewire pipewire-alsa pipewire-pulse wireplumber \
         mesa-utils vulkan-tools wayland-utils \
         xdg-user-dirs \
-        polkit polkit-gnome \
+        polkit \
         qt5-wayland qt6-wayland \
         gst-plugins-base gst-plugins-good \
         noto-fonts noto-fonts-cjk noto-fonts-emoji

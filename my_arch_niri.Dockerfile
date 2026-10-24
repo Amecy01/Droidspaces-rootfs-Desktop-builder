@@ -139,16 +139,6 @@ systemctl --user restart xdg-desktop-portal.service xdg-desktop-portal-gtk.servi
 if command -v fcitx5 >/dev/null 2>&1; then
     fcitx5 -d >/dev/null 2>&1 || true
 fi
-
-# 启动即锁屏：有 DMS 时由 DMS 的 lockAtStartup 处理；没有 DMS 才用 swaylock
-if command -v dms >/dev/null 2>&1; then
-    :
-elif command -v swaylock >/dev/null 2>&1; then
-    setsid swaylock -f -c 000000 --indicator \
-        --ring-color 89b4fa --key-hl-color a6e3a1 \
-        --inside-color 00000000 --show-failed-attempts \
-        >/dev/null 2>&1 &
-fi
 EOF
 RUN chmod 0755 /usr/local/bin/droidspaces-session-env
 
@@ -261,14 +251,6 @@ RUN for pam_file in /etc/pam.d/su /etc/pam.d/su-l; do \
     done && \
     grep -qE '^[[:space:]]*session[[:space:]].*pam_env\.so' /etc/pam.d/su-l || \
         echo 'session        required        pam_env.so' >> /etc/pam.d/su-l
-
-# swaylock 的 PAM 服务；没有它时锁屏可能没有任何密码输入反馈
-RUN cat > /etc/pam.d/swaylock <<'EOF'
-auth       include      system-login
-account    include      system-login
-password   include      system-login
-session    include      system-login
-EOF
 
 # 初始化环境变量文件；桌面专属变量由 profile 管理
 RUN : > /etc/environment
@@ -659,11 +641,11 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
         SETTINGS="/home/$USERNAME/.config/dms/settings.json"; \
         install -d -o "$USERNAME" -g "$USERNAME" "/home/$USERNAME/.config/dms"; \
         if [ -f "$SETTINGS" ]; then \
-            jq '.lockAtStartup = true | .loginctlLockIntegration = false | .fadeToLockEnabled = false' \
+            jq '.lockAtStartup = false | .loginctlLockIntegration = false' \
                 "$SETTINGS" > "$SETTINGS.tmp" && \
                 mv "$SETTINGS.tmp" "$SETTINGS"; \
         else \
-            printf '{"lockAtStartup": true, "loginctlLockIntegration": false, "fadeToLockEnabled": false}\n' > "$SETTINGS"; \
+            printf '{"lockAtStartup": false, "loginctlLockIntegration": false}\n' > "$SETTINGS"; \
         fi; \
         chown "$USERNAME:$USERNAME" "$SETTINGS"; \
     fi
