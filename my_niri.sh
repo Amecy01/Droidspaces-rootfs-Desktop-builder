@@ -16,6 +16,7 @@ configure_environment() {
         XDG_SESSION_CLASS=user
         XDG_SESSION_TYPE=wayland
         "QT_QPA_PLATFORM=wayland;xcb"
+        QT_QPA_PLATFORMTHEME=qt6ct
         ANLAND=1
         ANLAND_PRESENT_BACKEND=legacy
         ANLAND_SOCKET=/run/display.sock
@@ -51,6 +52,7 @@ install_niri_arch() {
         mesa-utils vulkan-tools wayland-utils \
         xdg-user-dirs \
         polkit \
+        qt5ct qt6ct \
         qt5-wayland qt6-wayland \
         gst-plugins-base gst-plugins-good \
         noto-fonts noto-fonts-cjk noto-fonts-emoji
