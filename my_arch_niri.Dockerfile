@@ -174,7 +174,7 @@ RUN ln -sf /etc/systemd/user/droidspaces-session-env.service \
 # 在硬件访问开启时用 sysfs 补建 /dev/input/event*。
 RUN cat > /etc/systemd/system/droidspaces-input-nodes.service <<'EOF'
 [Unit]
-Description=Mirror Android input event nodes into /dev/input
+Description=Mirror Android input and USB device nodes
 DefaultDependencies=no
 After=systemd-udevd.service
 Before=graphical.target
