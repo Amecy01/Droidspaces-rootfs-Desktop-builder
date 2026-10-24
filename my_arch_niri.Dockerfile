@@ -659,11 +659,11 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
         SETTINGS="/home/$USERNAME/.config/dms/settings.json"; \
         install -d -o "$USERNAME" -g "$USERNAME" "/home/$USERNAME/.config/dms"; \
         if [ -f "$SETTINGS" ]; then \
-            jq '.lockAtStartup = true | .loginctlLockIntegration = false' \
+            jq '.lockAtStartup = true | .loginctlLockIntegration = false | .fadeToLockEnabled = false' \
                 "$SETTINGS" > "$SETTINGS.tmp" && \
                 mv "$SETTINGS.tmp" "$SETTINGS"; \
         else \
-            printf '{"lockAtStartup": true, "loginctlLockIntegration": false}\n' > "$SETTINGS"; \
+            printf '{"lockAtStartup": true, "loginctlLockIntegration": false, "fadeToLockEnabled": false}\n' > "$SETTINGS"; \
         fi; \
         chown "$USERNAME:$USERNAME" "$SETTINGS"; \
     fi
