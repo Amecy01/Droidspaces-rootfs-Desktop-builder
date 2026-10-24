@@ -51,7 +51,7 @@ RUN pacman-key --init && \
 
 # 基础工具
 RUN pacman -S --noconfirm --needed \
-        bash jq dialog coreutils file findutils grep sed gawk curl wget ca-certificates \
+        bash jq coreutils file findutils grep sed gawk curl wget ca-certificates \
         bash-completion dbus systemd pam fastfetch logrotate util-linux \
         git vim sudo make \
         openssh net-tools iptables iputils iproute2 bind \
@@ -64,10 +64,9 @@ RUN pacman -S --noconfirm --needed \
         imagemagick chafa bat trash-cli \
         mpv imv zathura zathura-pdf-poppler
 
-# DMS doctor 的前五项依赖（只在启用 DMS 时安装）
+# DMS 只保留电源模式依赖；打印、额外图片格式、音频可视化不是必需
 RUN if [ "$ENABLE_dux" = "true" ]; then \
-        pacman -S --noconfirm --needed \
-            power-profiles-daemon cups-pk-helper kimageformats cava; \
+        pacman -S --noconfirm --needed power-profiles-daemon; \
     fi
 
 # ble.sh（系统级安装到 /usr/share/blesh）
@@ -183,9 +182,35 @@ RUN set -eux; \
 RUN pacman -S --noconfirm --needed fcitx5-im fcitx5-chinese-addons
 
 # Flatpak + USTC 镜像
-RUN pacman -S --needed --noconfirm flatpak && \
+RUN pacman -S --needed --noconfirm flatpak shared-mime-info && \
     flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo && \
     flatpak remote-modify flathub --url=https://mirrors.ustc.edu.cn/flathub
+
+# Gearlever：系统级安装，避免每次运行/安装时的 polkit 密码提示
+RUN flatpak install --system -y flathub it.mijorus.gearlever
+
+# AppImage MIME：Gearlever 声明 application/vnd.appimage
+RUN cat > /usr/share/mime/packages/gearlever-appimage.xml <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/vnd.appimage">
+    <comment>AppImage application</comment>
+    <glob pattern="*.AppImage" weight="80"/>
+    <glob pattern="*.appimage" weight="80"/>
+  </mime-type>
+</mime-info>
+EOF
+RUN update-mime-database /usr/share/mime
+
+# 给 Gearlever 的 desktop 文件补 MimeType；已存在则跳过
+RUN f=/var/lib/flatpak/exports/share/applications/it.mijorus.gearlever.desktop; \
+    if [ -f "$f" ] && ! grep -q 'application/vnd.appimage' "$f"; then \
+        if grep -q '^MimeType=' "$f"; then \
+            sed -i 's|^MimeType=.*|MimeType=application/vnd.appimage;|' "$f"; \
+        else \
+            sed -i '/^\[Desktop Entry\]/a MimeType=application/vnd.appimage;' "$f"; \
+        fi; \
+    fi
 
 # 压缩工具
 RUN pacman -S --noconfirm --needed zip unzip 7zip bzip2 xz tar gzip
@@ -345,6 +370,7 @@ video/mp4=mpv.desktop
 video/x-matroska=mpv.desktop
 video/webm=mpv.desktop
 application/pdf=org.pwmt.zathura.desktop
+application/vnd.appimage=it.mijorus.gearlever.desktop
 EOF
 
     chown -R "${USERNAME}:${USERNAME}" "/home/${USERNAME}/.config"
@@ -633,21 +659,6 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
         || runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" DMS_PRIVESC=sudo \
             timeout 180 dms setup headless --compositor niri --terminal alacritty --no-systemd; \
         rm -rf /tmp/dux; \
-    fi
-
-# 关闭 DMS 启动自动锁屏，只保留手动锁屏（避免进入桌面时闪烁）
-RUN if [ "$ENABLE_dux" = "true" ]; then \
-        set -e; \
-        SETTINGS="/home/$USERNAME/.config/dms/settings.json"; \
-        install -d -o "$USERNAME" -g "$USERNAME" "/home/$USERNAME/.config/dms"; \
-        if [ -f "$SETTINGS" ]; then \
-            jq '.lockAtStartup = false | .loginctlLockIntegration = false' \
-                "$SETTINGS" > "$SETTINGS.tmp" && \
-                mv "$SETTINGS.tmp" "$SETTINGS"; \
-        else \
-            printf '{"lockAtStartup": false, "loginctlLockIntegration": false}\n' > "$SETTINGS"; \
-        fi; \
-        chown "$USERNAME:$USERNAME" "$SETTINGS"; \
     fi
 
 # DMS 附加：starship 主题提示符 + 壁纸（不再单独提供外观选项）
