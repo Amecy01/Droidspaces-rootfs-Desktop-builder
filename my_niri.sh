@@ -46,7 +46,8 @@ install_niri_arch() {
     # 必需组件
     pacman -S --noconfirm --needed \
         xdg-desktop-portal xdg-desktop-portal-gtk xdg-utils \
-        alacritty wl-clipboard \
+        kitty fish wl-clipboard \
+        starship \
         brightnessctl playerctl \
         pipewire pipewire-alsa pipewire-pulse wireplumber \
         mesa-utils vulkan-tools wayland-utils \

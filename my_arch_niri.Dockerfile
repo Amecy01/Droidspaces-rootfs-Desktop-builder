@@ -7,6 +7,7 @@ ARG PASSWORD=0000
 ARG ANLAND_RELEASE_REPOSITORY=Goldzxcbug/droidspaces-package
 ARG ANLAND_PACKAGE_REVISION=unknown
 ARG ENABLE_dux=false
+ARG ENABLE_noctalia=false
 ######################################################
 
 # 复制全部所需脚本（niri profile 用自定义的 my_niri.sh）
@@ -52,16 +53,42 @@ RUN pacman-key --init && \
 # 基础工具
 RUN pacman -S --noconfirm --needed \
         bash jq coreutils file findutils grep sed gawk curl wget ca-certificates \
-        bash-completion dbus systemd pam fastfetch logrotate util-linux \
-        git vim sudo make \
+        dbus systemd pam fastfetch logrotate util-linux shared-mime-info \
+        git neovim sudo make \
         openssh net-tools iptables iputils iproute2 bind \
         procps-ng \
         libarchive kmod tzdata tar
 
-# Yazi 与常用配套工具（jq/unzip/wl-clipboard/7zip 已由基础包、压缩工具、niri 提供）
+# Yazi 本体 + linxuan-sys/yazi 配置所需的外部工具
+RUN pacman -S --noconfirm --needed yazi
+
+# Yazi 配置的外部预览/集成工具（ALARM 仓库可装的直接装）
 RUN pacman -S --noconfirm --needed \
-        yazi ffmpeg poppler fd ripgrep fzf zoxide \
-        imagemagick chafa bat trash-cli \
+        ffmpeg imagemagick mediainfo ouch fzf zoxide xz gzip \
+        gvfs udisks2 poppler chafa bat trash-cli
+
+# pandoc / duckdb / typst：ALARM 没有 aarch64 包，使用上游 ARM64 静态二进制
+RUN set -eux; \
+    tmp="$(mktemp -d)"; \
+    curl -fL -o "$tmp/pandoc.tar.gz" \
+        https://github.com/jgm/pandoc/releases/download/3.13/pandoc-3.13-linux-arm64.tar.gz; \
+    tar -xzf "$tmp/pandoc.tar.gz" -C "$tmp"; \
+    install -Dm755 "$(find "$tmp" -type f -name pandoc | head -1)" /usr/local/bin/pandoc; \
+    curl -fL -o "$tmp/duckdb.tar.gz" \
+        https://github.com/duckdb/duckdb/releases/download/v2.0.0/duckdb-cli-linux-arm64.tar.gz; \
+    tar -xzf "$tmp/duckdb.tar.gz" -C "$tmp"; \
+    install -Dm755 "$(find "$tmp" -type f -name duckdb | head -1)" /usr/local/bin/duckdb; \
+    curl -fL -o "$tmp/typst.tar.xz" \
+        https://github.com/typst/typst/releases/download/v0.15.1/typst-aarch64-unknown-linux-musl.tar.xz; \
+    tar -xJf "$tmp/typst.tar.xz" -C "$tmp"; \
+    install -Dm755 "$(find "$tmp" -type f -name typst | head -1)" /usr/local/bin/typst; \
+    rm -rf "$tmp"
+
+# fd/ripgrep 保留给 Neovim 搜索，不作为 Yazi 配置依赖
+RUN pacman -S --noconfirm --needed fd ripgrep
+
+# 独立文件查看器
+RUN pacman -S --noconfirm --needed \
         mpv imv zathura zathura-pdf-poppler
 
 # DMS 只保留电源模式依赖；打印、额外图片格式、音频可视化不是必需
@@ -69,12 +96,10 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
         pacman -S --noconfirm --needed power-profiles-daemon; \
     fi
 
-# ble.sh（系统级安装到 /usr/share/blesh）
-RUN set -eux; \
-    git clone --depth 1 --recursive https://github.com/akinomyoga/ble.sh.git /tmp/ble.sh; \
-    make -C /tmp/ble.sh install PREFIX=/usr; \
-    test -f /usr/share/blesh/ble.sh; \
-    rm -rf /tmp/ble.sh
+# 可选：Noctalia Wayland shell（官方仓库有 aarch64 包，默认不装）
+RUN if [ "$ENABLE_noctalia" = "true" ]; then \
+        pacman -S --noconfirm --needed noctalia; \
+    fi
 
 # niri 的周边组件（profile 自带 install 参数）
 RUN /usr/local/lib/droidspaces/desktops/niri.sh install
@@ -181,16 +206,8 @@ RUN set -eux; \
 # 输入法
 RUN pacman -S --noconfirm --needed fcitx5-im fcitx5-chinese-addons
 
-# Flatpak + USTC 镜像
-RUN pacman -S --needed --noconfirm flatpak shared-mime-info && \
-    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo && \
-    flatpak remote-modify flathub --url=https://mirrors.ustc.edu.cn/flathub
-
-# Gearlever：系统级安装，避免每次运行/安装时的 polkit 密码提示
-RUN flatpak install --system -y flathub it.mijorus.gearlever
-
-# AppImage MIME：Gearlever 声明 application/vnd.appimage
-RUN cat > /usr/share/mime/packages/gearlever-appimage.xml <<'EOF'
+# AppImage MIME（管理器由 AUR appimagemanager 提供）
+RUN cat > /usr/share/mime/packages/appimage.xml <<'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
   <mime-type type="application/vnd.appimage">
@@ -201,16 +218,6 @@ RUN cat > /usr/share/mime/packages/gearlever-appimage.xml <<'EOF'
 </mime-info>
 EOF
 RUN update-mime-database /usr/share/mime
-
-# 给 Gearlever 的 desktop 文件补 MimeType；已存在则跳过
-RUN f=/var/lib/flatpak/exports/share/applications/it.mijorus.gearlever.desktop; \
-    if [ -f "$f" ] && ! grep -q 'application/vnd.appimage' "$f"; then \
-        if grep -q '^MimeType=' "$f"; then \
-            sed -i 's|^MimeType=.*|MimeType=application/vnd.appimage;|' "$f"; \
-        else \
-            sed -i '/^\[Desktop Entry\]/a MimeType=application/vnd.appimage;' "$f"; \
-        fi; \
-    fi
 
 # 压缩工具
 RUN pacman -S --noconfirm --needed zip unzip 7zip bzip2 xz tar gzip
@@ -242,28 +249,15 @@ RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
     printf '%s:%s\n' "${USERNAME}" "${PASSWORD}" | chpasswd && \
     systemctl enable sshd
 
-# Flatpak 不能通过 --filesystem 暴露 /usr；给用户目录复制一份字体
-RUN install -d -o "$USERNAME" -g "$USERNAME" "/home/$USERNAME/.local/share/fonts" && \
-    cp /usr/local/share/fonts/*.ttf "/home/$USERNAME/.local/share/fonts/" && \
-    chown -R "$USERNAME:$USERNAME" "/home/$USERNAME/.local"
+# cliphist 固定安装；只在没有 DMS/Noctalia 时启用，避免两个剪贴板管理器抢 selection
+RUN pacman -S --noconfirm --needed cliphist
 
-# Flatpak 全局“最小宽容”：托盘、Wayland/X11、GPU、音频、输入法、字体、GTK 配置
-# 本机 Flatpak runtime 没有 Anland/kgsl Mesa，GTK4 统一走 Cairo，避免 GSK/EGL 崩溃
-RUN runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
-    flatpak override --user \
-        --socket=wayland \
-        --socket=fallback-x11 \
-        --socket=pulseaudio \
-        --device=dri \
-        --filesystem=xdg-run/fcitx5 \
-        --filesystem=xdg-data/fonts:ro \
-        --filesystem=xdg-config/gtk-3.0:ro \
-        --filesystem=xdg-config/gtk-4.0:ro \
-        --talk-name=org.kde.StatusNotifierWatcher \
-        --env=GSK_RENDERER=cairo \
-        --env=GTK_IM_MODULE=fcitx \
-        --env=QT_IM_MODULE=fcitx \
-        --env=XMODIFIERS=@im=fcitx
+RUN if [ "$ENABLE_dux" != "true" ] && [ "$ENABLE_noctalia" != "true" ]; then \
+        install -d -m 0755 "/home/$USERNAME/.config/systemd/user/graphical-session.target.wants"; \
+        ln -sf /usr/lib/systemd/user/cliphist.service \
+            "/home/$USERNAME/.config/systemd/user/graphical-session.target.wants/cliphist.service"; \
+        chown -R "$USERNAME:$USERNAME" "/home/$USERNAME/.config/systemd"; \
+    fi
 
 # Droidspaces USB Manager
 RUN /usr/local/sbin/install-droidspaces-usb-manager --user "${USERNAME}"
@@ -285,9 +279,9 @@ RUN echo 'MESA_LOADER_DRIVER_OVERRIDE=kgsl' >> /etc/environment && \
     echo 'GALLIUM_DRIVER=kgsl' >> /etc/environment && \
     echo 'FD_FORCE_KGSL=1' >> /etc/environment && \
     echo 'FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1' >> /etc/environment && \
-    echo 'EDITOR=vim' >> /etc/environment && \
-    echo 'VISUAL=vim' >> /etc/environment && \
-    echo 'TERMINAL=alacritty' >> /etc/environment
+    echo 'EDITOR=nvim' >> /etc/environment && \
+    echo 'VISUAL=nvim' >> /etc/environment && \
+    echo 'TERMINAL=kitty' >> /etc/environment
 
 # 输入法自启、会话环境、桌面配置
 COPY scripts/start/ /tmp/droidspaces-start/
@@ -316,24 +310,10 @@ GLFW_IM_MODULE=fcitx
 EOF
 
     echo 'export XDG_RUNTIME_DIR=/run/user/$(id -u)' >> "/home/${USERNAME}/.bashrc"
-    echo 'export EDITOR=vim VISUAL=vim' >> "/home/${USERNAME}/.bashrc"
+    echo 'export EDITOR=nvim VISUAL=nvim' >> "/home/${USERNAME}/.bashrc"
     echo 'command -v zoxide >/dev/null && eval "$(zoxide init bash)"' >> "/home/${USERNAME}/.bashrc"
 
     cat <<'EOF' >> "/home/${USERNAME}/.bashrc"
-
-# bash-completion + ble.sh：必须放在 .bashrc 末尾
-if [[ $- == *i* ]]; then
-    [[ -f /usr/share/bash-completion/bash_completion ]] && \
-        source /usr/share/bash-completion/bash_completion
-    if [[ -z ${BLE_VERSION-} && -f /usr/share/blesh/ble.sh ]]; then
-        source /usr/share/blesh/ble.sh
-    fi
-    if [[ -n ${BLE_VERSION-} ]]; then
-        bleopt complete_auto_complete=1
-        bleopt complete_auto_history=1
-        bleopt history_share=1
-    fi
-fi
 
 # yazi：退出时把当前目录带回 shell
 y() {
@@ -347,18 +327,42 @@ y() {
 }
 EOF
 
-    install -d -m 0755 "/home/${USERNAME}/.config/yazi"
-    cat <<'EOF' > "/home/${USERNAME}/.config/yazi/yazi.toml"
-[manager]
-ratio = [1, 4, 3]
-show_hidden = false
-linemode = "size"
-scrolloff = 5
+    install -d -m 0755 "/home/${USERNAME}/.config/kitty" \
+        "/home/${USERNAME}/.config/fish"
+    chown -R "${USERNAME}:${USERNAME}" "/home/${USERNAME}/.config"
 
-[preview]
-max_width = 1000
-max_height = 1000
+    cat <<'EOF' > "/home/${USERNAME}/.config/kitty/kitty.conf"
+font_family JetBrainsMono Nerd Font Mono
+font_size 11
+shell /usr/bin/fish
+shell_integration enabled
+confirm_os_window_close 0
 EOF
+
+    cat <<'EOF' > "/home/${USERNAME}/.config/fish/config.fish"
+set -g fish_greeting ""
+
+if type -q starship
+    starship init fish | source
+end
+
+if type -q zoxide
+    zoxide init fish | source
+end
+EOF
+
+    install -Dm644 /usr/share/droidspaces-dms/starship/starship.toml \
+        "/home/${USERNAME}/.config/starship.toml"
+
+    # Yazi：删除旧配置，改用 linxuan-sys/yazi 的整套配置
+    rm -rf "/home/${USERNAME}/.config/yazi"
+    runuser -u "${USERNAME}" -- env HOME="/home/${USERNAME}" \
+        git clone --depth 1 https://github.com/linxuan-sys/yazi.git \
+        "/home/${USERNAME}/.config/yazi"
+
+    # package.toml 只锁插件/主题版本，必须执行 ya pkg install 才会下载
+    runuser -u "${USERNAME}" -- env HOME="/home/${USERNAME}" \
+        sh -c 'cd "$HOME/.config/yazi" && ya pkg install'
 
     cat <<'EOF' > "/home/${USERNAME}/.config/mimeapps.list"
 [Default Applications]
@@ -370,7 +374,7 @@ video/mp4=mpv.desktop
 video/x-matroska=mpv.desktop
 video/webm=mpv.desktop
 application/pdf=org.pwmt.zathura.desktop
-application/vnd.appimage=it.mijorus.gearlever.desktop
+application/vnd.appimage=appimagemanager.desktop
 EOF
 
     chown -R "${USERNAME}:${USERNAME}" "/home/${USERNAME}/.config"
@@ -529,6 +533,16 @@ RUN pacman -Sy --noconfirm && \
 # yay / paru 直接从 CN 仓库装（有 aarch64 预编译包）
 RUN pacman -S --noconfirm --needed base-devel yay paru
 
+# AppImage 管理器：AUR appimagemanager（Python/PyQt6，arch=any，可 ARM 构建）
+RUN set -eux; \
+    trap 'rm -f /etc/sudoers.d/90-build' EXIT; \
+    printf '%%wheel ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/90-build; \
+    chmod 0440 /etc/sudoers.d/90-build; \
+    runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" \
+        yay -S --needed --noconfirm appimagemanager; \
+    rm -f /etc/sudoers.d/90-build; \
+    command -v appimagemanager
+
 # DMS 动态主题需要 matugen
 RUN if [ "$ENABLE_dux" = "true" ]; then \
         set -eux; \
@@ -572,7 +586,7 @@ RUN set -eux; \
 RUN set -eux; \
     REAL="$(command -v brave-origin)"; \
     [ "$REAL" != "/usr/local/bin/brave-origin" ]; \
-    printf '#!/bin/sh\nexec %s --enable-features=DefaultANGLEVulkan "$@"\n' "$REAL" \
+    printf '#!/bin/sh\nexec %s --enable-features=DefaultANGLEVulkan --ozone-platform=x11 "$@"\n' "$REAL" \
         > /usr/local/bin/brave-origin; \
     chmod 0755 /usr/local/bin/brave-origin; \
     for f in /usr/share/applications/brave-origin*.desktop; do \
@@ -597,24 +611,6 @@ RUN set -eux; \
     else \
         sed -i '/^\[options\]/a IgnorePkg = polkit' /etc/pacman.conf; \
     fi
-
-# DMS 右键卸载 Flatpak 调用的是 `flatpak uninstall -y --app <id>`（不带 sudo）。
-# 系统级 Flatpak 卸载会走 system-helper + polkit；这里只对 wheel 组放行
-# Flatpak 的安装/卸载/更新，避免每次都要认证弹窗。自用镜像可接受。
-RUN install -d -m 0755 /etc/polkit-1/rules.d && \
-    cat > /etc/polkit-1/rules.d/49-flatpak-wheel.rules <<'EOF'
-polkit.addRule(function(action, subject) {
-    if (!subject.isInGroup("wheel")) {
-        return null;
-    }
-    if (action.id.indexOf("org.freedesktop.Flatpak.") === 0 &&
-        (action.id.indexOf("install") !== -1 ||
-         action.id.indexOf("uninstall") !== -1 ||
-         action.id.indexOf("update") !== -1)) {
-        return polkit.Result.YES;
-    }
-});
-EOF
 
 # 可选：dux shell（full ARM 资产；先装 Quickshell + Qt6 依赖）
 RUN if [ "$ENABLE_dux" = "true" ]; then \
@@ -644,9 +640,6 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
         [ -n "$BIN" ] || { echo "dux: 包里没有 bin/dms，实际内容：" >&2; find /tmp/dux -maxdepth 3 -type f >&2; exit 1; }; \
         ROOT="$(dirname "$(dirname "$BIN")")"; \
         install -Dm755 "$BIN" /usr/local/bin/dms; \
-        if [ -f "$ROOT/completions/completion.bash" ]; then \
-            install -Dm644 "$ROOT/completions/completion.bash" /usr/share/bash-completion/completions/dms; \
-        fi; \
         if [ -f "$ROOT/completions/completion.fish" ]; then \
             install -Dm644 "$ROOT/completions/completion.fish" /usr/share/fish/vendor_completions.d/dms.fish; \
         fi; \
@@ -655,9 +648,9 @@ RUN if [ "$ENABLE_dux" = "true" ]; then \
         fi; \
         command -v dms; \
         runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" DMS_PRIVESC=sudo \
-            timeout 180 dms setup headless --compositor niri --terminal alacritty \
+            timeout 180 dms setup headless --compositor niri --terminal kitty \
         || runuser -u "$USERNAME" -- env HOME="/home/$USERNAME" DMS_PRIVESC=sudo \
-            timeout 180 dms setup headless --compositor niri --terminal alacritty --no-systemd; \
+            timeout 180 dms setup headless --compositor niri --terminal kitty --no-systemd; \
         rm -rf /tmp/dux; \
     fi
 
