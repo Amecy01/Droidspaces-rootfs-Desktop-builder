@@ -29,6 +29,11 @@ on:
         required: true
         type: boolean
         default: false
+      enable_noctalia:
+        description: 安装 Noctalia Wayland shell（与 DMS 二选一）
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -62,6 +67,10 @@ jobs:
       - name: 构建
         run: |
           set -euo pipefail
+          if [ "${{ inputs.enable_dux }}" = "true" ] && [ "${{ inputs.enable_noctalia }}" = "true" ]; then
+            echo "ENABLE_dux 和 ENABLE_noctalia 只能选一个" >&2
+            exit 1
+          fi
           docker buildx build \
             --target export \
             --output type=tar,dest="$GITHUB_WORKSPACE/rootfs.tar" \
@@ -70,6 +79,7 @@ jobs:
             --build-arg ANLAND_RELEASE_REPOSITORY="${{ inputs.anland_repository }}" \
             --build-arg ANLAND_PACKAGE_REVISION=unknown \
             --build-arg ENABLE_dux="${{ inputs.enable_dux }}" \
+            --build-arg ENABLE_noctalia="${{ inputs.enable_noctalia }}" \
             -f my_arch_niri.Dockerfile \
             .
 
